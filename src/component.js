@@ -8,6 +8,7 @@ const Component = function() {
             }, this);
         }
 
+
         this.initialize.apply(this, arguments);
         this.connect.apply(this, [config.events]);
     }

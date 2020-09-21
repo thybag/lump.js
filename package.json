@@ -1,0 +1,22 @@
+{
+  "name": "lumpjs",
+  "version": "0.0.1",
+  "description": "A basic component library",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thybag/lump.js.git"
+  },
+  "keywords": [
+    "js",
+    "component"
+  ],
+  "author": "Carl",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/thybag/lump.js/issues"
+  },
+  "homepage": "https://github.com/thybag/lump.js#readme"
+}
