@@ -1,8 +1,24 @@
 # Lump.js
 
-A simple "backbone.js"-like "Component" library. This library is entirely unnecessary and not meant for production use. I created this purely as a way to play around with some of the ideas involved in the "backbone" views, plus some of the newer ES6 features such as proxies. This library is entirely stand alone and has no dependencies. Only modern browsers are supported.
+A super simple "backbone.js"-like "Component" library.
 
-Currently the library consists of two parts.
+This library is entirely unnecessary and not meant for production use. I created this purely as a way to play around with some of the ideas/concepts that form part of Backbone.JS and similar libraries, as well as a few newer ES6 features such as proxies. This library is entirely stand alone and has no dependencies. Only modern browsers are supported.
+
+## Usage
+
+Install using NPM direct from Github.
+
+```
+ npm install git://git@github.com:thybag/lump.js.git
+```
+
+Then import either Component or Model where you want them.
+
+```
+import Component from 'lumpjs/src/component.js';
+import Model from 'lumpjs/src/model.js';
+```
+
 
 ## Component
 A simple wrapper around some rendered markup, using delegated events.

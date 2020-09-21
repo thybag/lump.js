@@ -57,6 +57,7 @@ Model.prototype.trigger = function(event, ...args) {
 }
 Model.prototype.on = function(key, method) {
         (this._events[key] = this._events[key] || []).push([event, method]);
-       
+        return this;
+}  
 
 export default Model;
