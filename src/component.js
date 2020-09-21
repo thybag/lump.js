@@ -63,6 +63,7 @@ const Component = function() {
         delete this._events[key];
     }
     ComponentImplementation.prototype.connect = function(events) {
+        if (!events || typeof events !== 'object') return;
         // connected all events
         for (let [key, method] of Object.entries(events)) {
             this.on(key, method);
