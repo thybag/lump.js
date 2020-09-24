@@ -8,6 +8,10 @@ const Component = function() {
             }, this);
         }
 
+        // Create el if none provided.
+        if (!this.el) {
+            this.el = document.createElement('div');
+        }
 
         this.initialize.apply(this, arguments);
         this.connect.apply(this, [config.events]);
@@ -74,6 +78,12 @@ const Component = function() {
         for (let [key, method] of Object.entries(this._events)) {
             this.off(key);
         }
+    }
+    ComponentImplementation.prototype.listenTo = function(model) {
+        if (typeof model.addListener !== 'function'){
+            throw 'Model does not support listeners';
+        }
+        model.addListener(this);
     }
     // Placeholders
     ComponentImplementation.prototype.initialize = function() {}
