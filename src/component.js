@@ -30,7 +30,7 @@ const Component = function() {
         let target = (split===-1) ? '' : key.substr(split+1);
 
         // Handle custom event
-        if (!(event in this.el)) {
+        if (!(['click','keyup','keydown', 'focus', 'blur'].includes(event)) && !(event in this.el)) {
             (this._events[key] = this._events[key] || []).push([event, method]);
             return this;
         }
@@ -57,7 +57,7 @@ const Component = function() {
     }
     ComponentImplementation.prototype.off = function(key) {
         // Remove a listener
-        for (let [event, handler] of this._events[event] || []) {
+        for (let [event, handler] of this._events[key] || []) {
              this.el.removeEventListener(event, handler);
         }
         delete this._events[key];
@@ -94,8 +94,6 @@ const Component = function() {
         definedComponent.config = config;
         return definedComponent;
     }
-
 }
-
 
 export default new Component;
