@@ -199,15 +199,20 @@ Model.prototype.detectChanges = function (keys, original, updated, namespace = '
     switch (returnType) {
         case 'CREATE':
             this.trigger("create:"+namespace, updated);
+            break;
         case 'UPDATE':
-            this.trigger("update:"+namespace, original);
+            this.trigger("update:"+namespace, updated, original);
+            break;
         case 'REMOVE':
             this.trigger("remove:"+namespace, original);
+            break;
         case 'NONE':
             this.trigger("unchanged:"+namespace);
+            break;
     }
+
     // Fire general change events
-    this.trigger("change:"+namespace, returnType, updated ,original);
+    this.trigger("change:"+namespace, returnType, updated, original);
     this.trigger("change", returnType, namespace, updated, original);
 
     return returnType;
@@ -222,7 +227,5 @@ Model.prototype.commitChanges = function(keys, original, updated){
     }
     return this.commitChanges(keys, original[next], updated[next]);
 }
-
-
 
 export default Model;
