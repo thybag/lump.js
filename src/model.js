@@ -1,11 +1,25 @@
-const Model = function(data) {
+/**
+ * Basic model to watch data. Will fire events on changed parts of data tree.
+ * 
+ */
+const Model = function(_data) {
     let parent = this;
     // Cache data access/edit
-    this._cache = new WeakMap();
-    this._data = data;
+    let _cache = new WeakMap();
+    let _original = JSON.parse(JSON.stringify(_data));
+
     // Eventing
     this._events = {};
-    this._listeners = {};
+    this._listeners = [];
+
+    // Dete
+    this.applyChanges = function(ctx)
+    {   
+        // Detect changes to data
+        let change = this.detectChanges(ctx.split('.'), _original, _data);
+        // Update internal data to match
+        if (change !== 'NONE') this.commitChanges(ctx.split('.'), _original, _data);
+    }
 
     // Create watcher proxy
     function newProxy(result, context) {
@@ -13,39 +27,61 @@ const Model = function(data) {
             get: function(obj, prop, receiver)
             {
                 let ctx = context ? context + '.' + prop : prop;
-                // Trigger read event
-                parent.trigger("read", ctx);
-
                 let result = Reflect.get(obj, prop);
                 if (typeof result === 'object') {
                     result = newProxy(result, ctx);
                 }
+
+                // Trigger read event
+                parent.trigger("read", ctx);
                 return result;
             },
             set: function(obj, prop, value) {
+                let success = Reflect.set(obj, prop, value);
                 let ctx = context ? context + '.' + prop : prop;
-
-                // Trigger create/update/change events
-                if (obj[prop]) {
-                    parent.trigger("update:"+ctx, value);
-                } else {
-                    parent.trigger("create:"+ctx, value);
-                }
-                parent.trigger("change", ctx, value);
-
-                Reflect.set(obj, prop, value);
-                return true;
+                // Detect changes and fire relevent events
+                parent.applyChanges(ctx);
+                
+                return success;
             }
         };
         // Config proxy or get from cache
-        const resultProxy = parent._cache.get(result) || new Proxy(result, proxyTraps);
-        parent._cache.set(result, resultProxy);
+        const resultProxy = _cache.get(result) || new Proxy(result, proxyTraps);
+        _cache.set(result, resultProxy);
         return resultProxy;
     }
-
     // Watch changes via proxy
-    this.data = newProxy(this._data, '');
+    this.data = newProxy(_data, '');    
 }
+// get attribute
+Model.prototype.get = function(key, fallback = null)
+{
+    let data = this.data, keys = key.split('.');
+    // Traverse dots
+    for (let k =0; k < keys.length; k++) {
+        // Fallback if key missing
+        if (!(keys[k] in data)) return fallback;
+        data = data[keys[k]];
+    }
+    return data;
+}
+// Set attribute
+Model.prototype.set = function(key, value)
+{
+    let data = this.data, keys = key.split('.');
+    // Traverse dots
+    for (let k =0; k < keys.length-1; k++) {
+        // Fallback if key missing
+        if (!(keys[k] in data)){
+            data = data[keys[k]] = {};
+        } else {
+            data = data[keys[k]];
+        }
+    }
+    // Set last key manually as primatives will copy
+    return data[keys[keys.length-1]] = value;
+}
+// Trigger event
 Model.prototype.trigger = function(event, ...args) {
     // Fire own event
     for (let i of this._events[event] || []) {
@@ -58,18 +94,135 @@ Model.prototype.trigger = function(event, ...args) {
     }
 
     // Fire listeners
-    for(let listener of Object.values(this._listeners)) {
+    for(let listener of this._listeners) {
         listener.trigger(event, ...args);
     }
 }
+// Add event
 Model.prototype.on = function(key, method) {
-        (this._events[key] = this._events[key] || []).push([event, method]);
+    (this._events[key] = this._events[key] || []).push([key, method]);
+    return this;
+}
+// Remove event
+Model.prototype.off = function(key, method) {
+    if (!this._events[key]) return this;
+
+    // Delete all listners if no method
+    if (!method) {
+        delete this._events[key];
         return this;
-}  
+    }
+    // Else only one with method
+    for (let evt in this._events[key]) {
+        if(this._events[key][evt][1] == method) {
+            this._events[key].splice(evt, 1);
+        }
+    }
+
+    return this;
+}
+// Add listener
 Model.prototype.addListener = function (listener) {
     if (typeof listener.trigger !== 'function'){
         throw 'Unsupported listener type provided. Must implement trigger method.'
     }
-    this._listeners[listener] = listener;
+    this._listeners.push(listener);
+    return this;
 }
+// Remove listener
+Model.prototype.removeListener = function (listener) {
+    let idx = this._listeners.indexOf(listener);
+    if (idx !== -1) {
+        this._listeners.splice(this._listeners.indexOf(listener), 1);
+    }
+    return this;
+}
+
+// Util to clone object
+Model.prototype.copy = function(data)
+{
+    return (typeof data == 'object') ? JSON.parse(JSON.stringify(data)) : data;
+}
+// Detect change type for a primative
+Model.prototype.detectChangeType = function(original, updated)
+{
+    if(!original) return "CREATE"; // additional key added to our new data
+    if(!updated) return "REMOVE"; // old key removed from our new data
+    if(original==updated) return "NONE"; // data unchanged between the two keys
+
+    return "UPDATE"; // A mix - so an update
+}
+// Detect changes in watched data
+Model.prototype.detectChanges = function (keys, original, updated, namespace = '')
+{
+    // Detect any changes in the affected data path
+    // (keys is an array start from root the the affected location)
+    let next = keys.shift();
+    let returnType = 'UPDATE';
+    let _changes = [];
+    namespace = namespace ? `${namespace}.${next}` : next;
+
+    // Get values we're comparing
+    original = original ? original[next] : undefined;
+    updated = updated ? updated[next] : undefined;
+
+    // Target key not yet reached, dig on to the next key
+    if (keys.length != 0) returnType = this.detectChanges(this.copy(keys), original, updated, namespace);
+   
+    // Target depth reached. 
+    if (keys.length == 0) {
+        // Detect attribute changes to children
+        if (typeof updated == 'object' || typeof original == 'object') {
+            // Check for field changes
+            let fields = new Set([ 
+                ...(updated) ? Object.keys(updated) : [],
+                ...(original) ? Object.keys(original) : []
+            ]);
+
+            let results = [];
+            for (let key of fields) {
+                results.push(this.detectChanges([key], original, updated, namespace));
+            }
+            // Object checks
+            if(!original) returnType = 'CREATE';
+            if(!updated) returnType = 'REMOVE'; 
+            if (results.every(function(val){ return val == 'NONE'})) {
+                returnType = 'NONE';
+            }
+        } else {
+            // Else, detect change type on this specific attribute
+            returnType = this.detectChangeType(original, updated);
+        }
+    }
+
+    // Fire change type events
+    switch (returnType) {
+        case 'CREATE':
+            this.trigger("create:"+namespace, updated);
+        case 'UPDATE':
+            this.trigger("update:"+namespace, original);
+        case 'REMOVE':
+            this.trigger("remove:"+namespace, original);
+        case 'NONE':
+            this.trigger("unchanged:"+namespace);
+    }
+    // Fire general change events
+    this.trigger("change:"+namespace, returnType, updated ,original);
+    this.trigger("change", returnType, namespace, updated, original);
+
+    return returnType;
+}
+// Apply change to original, so new changes can be detected
+Model.prototype.commitChanges = function(keys, original, updated){
+    let next = keys.shift();
+    // Insert either at most accurate point, or where original deoes not yet exist
+    if (keys.length == 0  || !original[next]) {
+        original[next] = this.copy(updated[next]);
+        return;
+    }
+    return this.commitChanges(keys, original[next], updated[next]);
+}
+
+
+
 export default Model;
