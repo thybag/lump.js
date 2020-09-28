@@ -1,6 +1,6 @@
 /**
  * Basic model to watch data. Will fire events on changed parts of data tree.
- * 
+ *
  */
 const Model = function(_data) {
     let parent = this;
@@ -14,7 +14,7 @@ const Model = function(_data) {
 
     // Dete
     this.applyChanges = function(ctx)
-    {   
+    {
         // Detect changes to data
         let change = this.detectChanges(ctx.split('.'), _original, _data);
         // Update internal data to match
@@ -41,7 +41,7 @@ const Model = function(_data) {
                 let ctx = context ? context + '.' + prop : prop;
                 // Detect changes and fire relevent events
                 parent.applyChanges(ctx);
-                
+
                 return success;
             }
         };
@@ -51,35 +51,32 @@ const Model = function(_data) {
         return resultProxy;
     }
     // Watch changes via proxy
-    this.data = newProxy(_data, '');    
+    this.data = newProxy(_data, '');
 }
+
+const jsPathRegex = /([^[.\]])+/g;
+
 // get attribute
 Model.prototype.get = function(key, fallback = null)
 {
-    let data = this.data, keys = key.split('.');
-    // Traverse dots
-    for (let k =0; k < keys.length; k++) {
-        // Fallback if key missing
-        if (!(keys[k] in data)) return fallback;
-        data = data[keys[k]];
-    }
-    return data;
+    if (!key) return fallback;
+
+    const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
+
+    return (
+        keyArray.reduce((prevObj, key) => prevObj && prevObj[key], this.data) || fallback
+    );
 }
 // Set attribute
 Model.prototype.set = function(key, value)
 {
-    let data = this.data, keys = key.split('.');
-    // Traverse dots
-    for (let k =0; k < keys.length-1; k++) {
-        // Fallback if key missing
-        if (!(keys[k] in data)){
-            data = data[keys[k]] = {};
-        } else {
-            data = data[keys[k]];
-        }
-    }
-    // Set last key manually as primatives will copy
-    return data[keys[keys.length-1]] = value;
+    const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
+
+    keyArray.reduce((acc, prop, i) => {
+        if (acc[prop] === undefined) acc[prop] = {}
+        if (i === keyArray.length - 1) acc[prop] = value;
+        return acc[prop];
+    }, this.data);
 }
 // Trigger event
 Model.prototype.trigger = function(event, ...args) {
@@ -168,13 +165,13 @@ Model.prototype.detectChanges = function (keys, original, updated, namespace = '
 
     // Target key not yet reached, dig on to the next key
     if (keys.length != 0) returnType = this.detectChanges(this.copy(keys), original, updated, namespace);
-   
-    // Target depth reached. 
+
+    // Target depth reached.
     if (keys.length == 0) {
         // Detect attribute changes to children
         if (typeof updated == 'object' || typeof original == 'object') {
             // Check for field changes
-            let fields = new Set([ 
+            let fields = new Set([
                 ...(updated) ? Object.keys(updated) : [],
                 ...(original) ? Object.keys(original) : []
             ]);
@@ -185,7 +182,7 @@ Model.prototype.detectChanges = function (keys, original, updated, namespace = '
             }
             // Object checks
             if(!original) returnType = 'CREATE';
-            if(!updated) returnType = 'REMOVE'; 
+            if(!updated) returnType = 'REMOVE';
             if (results.every(function(val){ return val == 'NONE'})) {
                 returnType = 'NONE';
             }
