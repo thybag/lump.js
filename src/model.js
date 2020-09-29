@@ -57,7 +57,7 @@ const Model = function(_data) {
 const jsPathRegex = /([^[.\]])+/g;
 
 // get attribute
-Model.prototype.get = function(key, fallback = null)
+Model.prototype.get = function(key, fallback = undefined)
 {
     if (!key) return fallback;
 
