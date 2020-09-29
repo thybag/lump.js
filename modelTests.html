@@ -8,34 +8,43 @@
 		window.model = new Model(
 			{
 				'stuff': {
+					'northwind': 'contoso',
 					'info': [1,2,3]
 				},
 				'name': 'dave'
 			}
 		);
 
+		const test = (msg, actual, expected) => console.assert(
+			actual === expected,
+			`${msg}\n\nExpected:\t${expected}\nActual:\t\t${actual}`
+		);
+
 		// Assert read works
-		console.assert(window.model.data);
-		console.assert(window.model.data.name == 'dave');
-		console.assert(window.model.data.stuff.info[1] == 2);
-		console.assert(window.model.get('name') == 'dave');
-		console.assert(window.model.get('stuff.info.1') == 2);
-		console.assert(window.model.get('stuff.info.6') == null);
+		test('data object exists', typeof window.model.data, 'object');
+		test('data object is populated', window.model.data.name, 'dave');
+		test('data object is populated', window.model.data.stuff.info[1], 2);
+		test('non-nested getting', window.model.get('name'), 'dave');
+		test('dot syntax getting', window.model.get('stuff.info.1'), 2);
+		test('non-existent fallback response', window.model.get('stuff.info.6'), null);
 		// Fallback
-		console.assert(window.model.get('stuff.info.6', 'hello') == 'hello');
+		test('custom fallback response', window.model.get('stuff.info.6', 'hello'), 'hello');
 
 		// Test set
 		window.model.set('name','bert');
-		console.assert(window.model.data.name == 'bert');
-		console.assert(window.model.get('name') == 'bert');
+		test('change has been made', window.model.data.name, 'bert');
+		test('change is accessible via getter', window.model.get('name'), 'bert');
+
+		window.model.set('stuff.northwind', 'example');
+		test('nested setting', window.model.data.stuff.northwind, 'example');
 
 		window.model.set('new.object.name','Hullo');
-		console.assert(window.model.get('new.object.name') == 'Hullo');
+		test('deep object creation', window.model.data.new.object.name, 'Hullo');
+
 		window.model.set('new.object.arr', [1]);
-		console.assert(window.model.get('new.object.arr.0') == 1);
-		
+		test('setting and getting new arrays', window.model.data.new.object.arr[0], 1);
 		window.model.set('new.object.arr2.0', 'hi');
-		console.assert(window.model.get('new.object.arr2.0') == 'hi');
+		test('setting and getting numerical properties', window.model.data.new.object.arr2[0], 'hi');
 
 		// test read events
 		let answers1 = [
@@ -47,7 +56,7 @@
 		];
 		// Test some callbacks
 		window.model.on('read', function(f) {
-			console.assert(f == answers1.shift());
+			test('read listener parameters', f, answers1.shift());
 		});
 		window.model.get('name')
 		window.model.data.name;
@@ -58,16 +67,16 @@
 		let f2 = function(a){return 2+2;}
 		window.model.on('read', f1);
 		window.model.on('read', f2);
-		
-		console.assert(window.model._events['read'].length == 3);
+
+		test('adding event listeners', window.model._events['read'].length, 3);
 		// Remove specific event
 		window.model.off('read', f1);
 		window.model.data.name;
-		console.assert(window.model._events['read'].length == 2);
+		test('removing individual event listener', window.model._events['read'].length, 2);
 		// Remove all of type
 		window.model.off('read');
-		console.assert(!window.model._events['read']);
-	
+		test('removing all event listeners', !window.model._events['read'], true);
+
 		// Now lets try change detection
 		let answers2 = [
 			// T1 - new obj
@@ -96,15 +105,15 @@
 			['REMOVE', 'testing.sub.tree.field2'],
 			['REMOVE', 'testing.sub.tree'],
 			['UPDATE', 'testing.sub'],
-			['UPDATE', 'testing'], 
+			['UPDATE', 'testing'],
 		];
 		// Test some callbacks
 		window.model.on('change', function(type, namespace, updated, original) {
 			let changeType, ns;
 			[changeType, ns] = answers2.shift();
-			console.assert(changeType == type && ns == namespace, "mismatch "+namespace);
+			test(`mismatch ${namespace}\n\nExpected: changeType == type && ns == namespace\nActual: ${changeType} == ${type} && ${ns} == ${namespace}`, changeType == type && ns == namespace, true);
 		});
-		
+
 		// T1
 		window.model.data.test = {"first": 'jim', "last": "bob"};
 		// T2
