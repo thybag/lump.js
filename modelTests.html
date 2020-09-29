@@ -27,6 +27,9 @@
 		test('data object is populated', window.model.data.stuff.info[1], 2);
 		test('non-nested getting', window.model.get('name'), 'dave');
 		test('dot syntax getting', window.model.get('stuff.info.1'), 2);
+		test('square bracket getting', window.model.get('stuff.info[1]'), 2);
+		test('array based getting', window.model.get(['stuff', 'info', 1]), 2);
+		test('mixed syntax getting', window.model.get('stuff.nest[0].foo'), 'bar');
 		test('non-existent fallback response', window.model.get('stuff.info.6'), null);
 		// Fallback
 		test('custom fallback response', window.model.get('stuff.info.6', 'hello'), 'hello');
