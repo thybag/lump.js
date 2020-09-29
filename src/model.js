@@ -73,7 +73,7 @@ Model.prototype.set = function(key, value)
     const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
 
     keyArray.reduce((acc, prop, i) => {
-        if (acc[prop] === undefined) acc[prop] = {}
+        if (acc[prop] === undefined) acc[prop] = {};
         if (i === keyArray.length - 1) acc[prop] = value;
         return acc[prop];
     }, this.data);
