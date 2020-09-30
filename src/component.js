@@ -46,11 +46,7 @@ const Component = function() {
     ComponentImplementation.prototype.trigger = function(event, ...args) {
         for (let i of this._events[event] || []) {
             // Trigger event (either func or method to call)
-            if (typeof i[1] === "function") {
-                i[1](...args);
-            }else {
-                this[i[1]](...args);
-            }
+            i[1](...args);
         }
     }
     ComponentImplementation.prototype.on = function(key, method) {
@@ -64,16 +60,25 @@ const Component = function() {
             event = eventOverride[event];
         }
 
+        // Wrap runner in to method
+        let run = (...args) => {
+            if (typeof method === "function") {
+                method(...args);
+            }else {
+                this[method](...args);
+            }
+        };
+
         // Handle custom event
         if (!(nativeEvents.includes(event)) && !(event in this.el)) {
-            (this._events[key] = this._events[key] || []).push([event, method]);
+            (this._events[key] = this._events[key] || []).push([event, run]);
             return this;
         }
 
         // If no target, bind to root el
         if (!target) {
-            this.el.addEventListener(event, method);
-            (this._events[key] = this._events[key] || []).push([event, method]);
+            this.el.addEventListener(event, run);
+            (this._events[key] = this._events[key] || []).push([event, run]);
             return this;
         }
 
@@ -82,7 +87,7 @@ const Component = function() {
             // e.target was the clicked element
             if (e.target && e.target.matches(target)) {
                 // If function? run it
-                this[method](e.target, e);
+                run(e, e.target);
             }
         }
 
