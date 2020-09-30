@@ -1,3 +1,29 @@
+// Use whitelist to determine if events exist.
+// In many cases only the "target" will have these & we will be catching the bubbled version.
+const nativeEvents = [
+    'click',
+    'dblclick',
+    'keyup',
+    'keydown',
+    'dragenter',
+    'dragover',
+    'dragleave',
+    'drop',
+    'copy',
+    'cut',
+    'focus',
+    'paste',
+    'contextmenu',
+    'focusin', // focus
+    'focusout' // blur?
+];
+// Blur/focus cannot be defered, so use 
+// override events instead on listeners
+const eventOverride = {
+    'focus': 'focusin',
+    'blur': 'focusout'
+};
+
 const Component = function() {
     // Component
     let ComponentImplementation = function(config) {
@@ -33,8 +59,13 @@ const Component = function() {
         let event = (split===-1) ? key : key.substr(0,split);
         let target = (split===-1) ? '' : key.substr(split+1);
 
+        // Override event type if needed.
+        if (eventOverride[event]) {
+            event = eventOverride[event];
+        }
+
         // Handle custom event
-        if (!(['click','keyup','keydown', 'focus', 'blur'].includes(event)) && !(event in this.el)) {
+        if (!(nativeEvents.includes(event)) && !(event in this.el)) {
             (this._events[key] = this._events[key] || []).push([event, method]);
             return this;
         }
@@ -51,7 +82,7 @@ const Component = function() {
             // e.target was the clicked element
             if (e.target && e.target.matches(target)) {
                 // If function? run it
-                this[method](e.target);
+                this[method](e.target, e);
             }
         }
 
