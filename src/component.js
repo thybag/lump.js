@@ -15,7 +15,8 @@ const nativeEvents = [
     'paste',
     'contextmenu',
     'focusin', // focus
-    'focusout' // blur?
+    'focusout', // blur?
+    'change'
 ];
 // Blur/focus cannot be defered, so use 
 // override events instead on listeners
