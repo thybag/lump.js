@@ -143,8 +143,8 @@ Model.prototype.copy = function(data)
 // Detect change type for a primative
 Model.prototype.detectChangeType = function(original, updated)
 {
-    if(!original) return "CREATE"; // additional key added to our new data
-    if(!updated) return "REMOVE"; // old key removed from our new data
+    if(!original && original !== false) return "CREATE"; // additional key added to our new data
+    if(!updated && updated !== false) return "REMOVE"; // old key removed from our new data
     if(original==updated) return "NONE"; // data unchanged between the two keys
 
     return "UPDATE"; // A mix - so an update
@@ -181,8 +181,8 @@ Model.prototype.detectChanges = function (keys, original, updated, namespace = '
                 results.push(this.detectChanges([key], original, updated, namespace));
             }
             // Object checks
-            if(!original) returnType = 'CREATE';
-            if(!updated) returnType = 'REMOVE';
+            if(!original && original !== false) returnType = 'CREATE';
+            if(!updated && updated !== false) returnType = 'REMOVE';
             if (results.every(function(val){ return val == 'NONE'})) {
                 returnType = 'NONE';
             }
