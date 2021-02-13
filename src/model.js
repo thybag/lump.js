@@ -18,11 +18,17 @@ const Model = function(_data) {
         // Detect changes to data
         let change = this.detectChanges(ctx.split('.'), _original, _data);
         // Update internal data to match
-        if (change !== 'NONE') this.commitChanges(ctx.split('.'), _original, _data);
+        if (change !== 'NONE') {
+            this.commitChanges(ctx.split('.'), _original, _data);
+            this.trigger('updated');
+        } 
     }
 
     // Create watcher proxy
     function newProxy(result, context) {
+        // Don't attempt to proxy nulls
+        if (result === null) return null;
+
         const proxyTraps =  {
             get: function(obj, prop, receiver)
             {
