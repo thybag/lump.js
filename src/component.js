@@ -43,7 +43,7 @@ const Component = function() {
         this.initialize.apply(this, arguments);
         this.connect.apply(this, [config.events]);
     }
-    ComponentImplementation.prototype._events = {};
+
     ComponentImplementation.prototype.trigger = function(event, ...args) {
         for (let i of this._events[event] || []) {
             // Trigger event (either func or method to call)
@@ -104,6 +104,8 @@ const Component = function() {
         delete this._events[key];
     }
     ComponentImplementation.prototype.connect = function(events) {
+        // Create events on new obj, so components don't share
+        this._events = [];
         if (!events || typeof events !== 'object') return;
         // connected all events
         for (let [key, method] of Object.entries(events)) {
