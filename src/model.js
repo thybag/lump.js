@@ -26,15 +26,13 @@ const Model = function(_data) {
 
     // Create watcher proxy
     function newProxy(result, context) {
-        // Don't attempt to proxy nulls
-        if (result === null) return null;
-
         const proxyTraps =  {
             get: function(obj, prop, receiver)
             {
                 let ctx = context ? context + '.' + prop : prop;
                 let result = Reflect.get(obj, prop);
-                if (typeof result === 'object') {
+
+                if (parent.isObject(result)) {
                     result = newProxy(result, ctx);
                 }
 
@@ -146,15 +144,23 @@ Model.prototype.copy = function(data)
 {
     return (typeof data == 'object') ? JSON.parse(JSON.stringify(data)) : data;
 }
+
 // Detect change type for a primative
 Model.prototype.detectChangeType = function(original, updated)
 {
-    if(!original && original !== false) return "CREATE"; // additional key added to our new data
-    if(!updated && updated !== false) return "REMOVE"; // old key removed from our new data
+    if(typeof original === 'undefined') return "CREATE"; // additional key added to our new data
+    if(typeof updated === 'undefined') return "REMOVE"; // old key removed from our new data
     if(original==updated) return "NONE"; // data unchanged between the two keys
 
     return "UPDATE"; // A mix - so an update
 }
+
+// Detect objects that are not NULL values
+Model.prototype.isObject = function (value)
+{
+   return (typeof value === 'object' && value !== null);
+}
+
 // Detect changes in watched data
 Model.prototype.detectChanges = function (keys, original, updated, namespace = '')
 {
@@ -175,7 +181,7 @@ Model.prototype.detectChanges = function (keys, original, updated, namespace = '
     // Target depth reached.
     if (keys.length == 0) {
         // Detect attribute changes to children
-        if (typeof updated == 'object' || typeof original == 'object') {
+        if (this.isObject(updated) ||this.isObject(original)) {
             // Check for field changes
             let fields = new Set([
                 ...(updated) ? Object.keys(updated) : [],
