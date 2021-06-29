@@ -7,8 +7,8 @@ This library is entirely stand alone and has no dependencies. Only modern browse
 
 Lump is currency composed of two key elements.
 
- - *Components* - Defines logic for managing a selected area of the DOM. Heavily inspired by some of my favorite backbone.js features/approaches in terms of deferred event listeners and none perspective approach. 
- - *Models* - A wrapper for arbitrary data, implementing a reactive layer using proxies. Interaction with the model is done primarly by registering event listens, that will trigger whenever a change is detected on its data path. The key change types are `create` `update`,`remove`. Changes from subobjects will automatically bubble to their parents.
+ - **Components** - Defines logic for managing a selected area of the DOM. Heavily inspired by some of my favorite backbone.js features/approaches in terms of deferred event listeners and none perspective approach. 
+ - **Models** - A wrapper for arbitrary data, implementing a reactive layer using proxies. Interaction with the model is done primarly by registering event listens, that will trigger whenever a change is detected on its data path. The key change types are `create` `update`,`remove`. Changes from subobjects will automatically bubble to their parents.
 
 
 ## Usage
@@ -29,14 +29,14 @@ import Model from 'lumpjs/src/model.js';
 ## Component
 A simple wrapper around some rendered markup, using delegated events.
 
-Key features;
+**Key features**
 * Delegated events setup in {events}. These can be both DOM events, or custom ones you trigger manually.
 * Functions can be async, if you want to load data
 * on/off/trigger to fire events.
 
 `Component` implements two key methods
-* Make - Create a new component using a given config
-* Define - setup a reusable component. This can be invoked by calling make on them with the data/overrides you would like to use.
+* **Make** - Create a new component using a given config
+* **Define** - setup a reusable component. This can be invoked by calling make on them with the data/overrides you would like to use.
 
 ```js
 let InfoBox = Component.make({
@@ -99,7 +99,7 @@ Basic model component that will keep track of the contents of it's data using pr
 
 Model events use a deferred listener approach, where by the manager will fire events for any object within your provided namespace, allowing for easy detection of complete object replacement. 
 
-*Key data events.*
+**Key data events.**
 
 * `on('create:{datapath}', (newValue) => {})` - New data created at datapath
 * `on('update:{datapath}', (newValue, previousValue) => {})` - Data at datapath has been changed to a new value
@@ -108,7 +108,7 @@ Model events use a deferred listener approach, where by the manager will fire ev
 * `on('change:{datapath}', (changeType, newValue, oldValue) => {})` - Change of any type to datapath
 * `on('change', (changeType, datapath, newValue, oldValue) => {})`- Change to any data
 
-*Datapath* is a dot notation representation of the path to the data you want to watch.
+**Datapath** is a dot notation representation of the path to the data you want to watch.
 e.g. `title`, `company.name`, `company.employees.0.name` or `company.employees[0].name`
 
 Each object in the Model supports the magic methods `on`, `get` and `set`. Adding a `on('update')` to one of these will register a model listener for the objects current datapath.
