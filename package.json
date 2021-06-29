@@ -1,9 +1,10 @@
 {
   "name": "lumpjs",
   "version": "0.0.1",
-  "description": "A basic component library",
+  "description": "A simple component and reactive model library",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "lint": "eslint src/"
   },
   "repository": {
     "type": "git",
@@ -15,8 +16,16 @@
   ],
   "author": "Carl",
   "license": "MIT",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/thybag/lump.js/issues"
   },
-  "homepage": "https://github.com/thybag/lump.js#readme"
+  "homepage": "https://github.com/thybag/lump.js#readme",
+  "devDependencies": {
+    "jest": "^27.0.6",
+    "eslint": "^7.20.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-node": "^11.1.0"
+  }
 }
