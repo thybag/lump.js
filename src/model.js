@@ -326,7 +326,7 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
       this.trigger('remove:'+namespace, original);
       break;
     case 'NONE':
-      this.trigger('unchanged:'+namespace);
+      this.trigger('unchanged:'+namespace, original);
       break;
   }
 
