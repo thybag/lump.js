@@ -19,6 +19,10 @@ function makeTestModel() {
 describe('Test basic get functionalty', () => {
   const testModel = makeTestModel();
 
+  test('Test GH workflow', () => {
+    expect(true).toBe(false);
+  });
+
   test('data object exists', () => {
     expect(typeof testModel.data).toBe('object');
   });
