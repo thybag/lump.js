@@ -12,8 +12,8 @@ module.exports = {
     sourceType: 'module'
   },
   rules: {
-    'max-len': [2, 140],
-    'no-invalid-this': [0],
-    'require-jsdoc': [0]
+    'max-len': [2, 120],
+    "indent": ["error", 4],
+    'no-invalid-this': [0]
   }
 }

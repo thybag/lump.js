@@ -374,6 +374,21 @@ describe('Context events', () => {
     testModel = makeTestModel();
   });
 
+  test('Context event simple', () => {
+    let stuff = testModel.get('stuff');
+
+    stuff.on('change', () => {});
+    expect(Object.keys(testModel._events)[0]).toBe('change:stuff');
+  });
+
+  test('Context event, sub object', () => {
+    let stuff = testModel.get('stuff');
+
+    stuff.on('change:name', () => {});
+    expect(Object.keys(testModel._events)[0]).toBe('change:stuff.name');
+  });
+
+
   test('Add event listener directly to sub object', () => {
     let stuff = testModel.get('stuff');
 
