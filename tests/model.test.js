@@ -430,4 +430,24 @@ describe('Context events', () => {
     //testModel.set('test.testing', {'name': 'Jane'});
     testing.set('name', 'Jane');
   });
+
+  test('Get context', () => {
+    testModel.set('test.testing.1', {'name': 'bobbert'});
+    let testing = testModel.get('test.testing.1');
+    expect(testing.context()).toBe('test.testing.1');
+  });
+
+  test('Can refresh', () => {
+    testModel.set('test', {'data':{name:'abc'}});
+
+    // When using a local obj, complete refresh of object can lead to it becoming
+    // orphaned. Refresh model allows it to figure out its real version again.
+    let data = testModel.get('test.data');
+
+    testModel.set('test', {'data':{name:'def'}});
+
+    expect(data.name).toBe('abc');
+    data = data.refresh();
+    expect(data.name).toBe('def');
+  });
 });  
