@@ -52,11 +52,13 @@ const Model = function(_data) {
                             return parent.get(`${context}.${key}`);
                         };
                     }
+
                     if (prop == 'set') {
                         return function(key, value) {
                             return parent.set(`${context}.${key}`, value);
                         };
                     }
+
                     if (prop == 'on') {
                         return function(event, callback) {
                             let listener = `${event}:${context}`;
@@ -69,6 +71,17 @@ const Model = function(_data) {
                             }
                             return parent.on(listener, callback);
                         };
+                    }
+
+                    // Get latest version of this object.
+                    // Can happen if old object gets disconnected
+                    if (prop == 'refresh') {
+                        return () => parent.get(context);
+                    }
+
+                    // Get datapath to this object
+                    if (prop == 'context') {
+                        return () => context;
                     }
                 }
 
