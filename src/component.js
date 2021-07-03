@@ -1,3 +1,5 @@
+import makeTemplate from './template.js';
+
 // Use whitelist to determine if events exist.
 // In many cases only the "target" will have these & we will be catching the bubbled version.
 const nativeEvents = [
@@ -38,6 +40,11 @@ const Component = function() {
         // Create el if none provided.
         if (!this.el) {
             this.el = document.createElement('div');
+        }
+
+        // Init templates
+        if (this.template) {
+            this._template = makeTemplate({template: this.template, className: this.className});
         }
 
         /* eslint-disable prefer-rest-params */
@@ -128,6 +135,15 @@ const Component = function() {
     // Placeholders
     ComponentImplementation.prototype.initialize = function() {};
     ComponentImplementation.prototype.render = function() {};
+
+    // Template helpers
+    ComponentImplementation.prototype.template = null;
+    ComponentImplementation.prototype.tpl = function(...args) {
+        if (!this._template) {
+            throw new Error('This component does not implement a template');
+        }
+        return this._template.render(...args);
+    };
 
     // Factory features
     this.config = [];
