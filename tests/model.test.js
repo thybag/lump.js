@@ -365,6 +365,22 @@ describe('Simple change detection', () => {
 
     testModel.set('a', {});
   });
+
+  test('Wildcard new element', () => {
+    let called = 0;
+
+    testModel.set('players', [{'name': 'bob'},{'name': 'sally'}]);
+ 
+    testModel.on('create:players.*', (change) => {
+      called++;
+      expect(change.name).toBe('buzz');
+    });
+
+    testModel.set('players', [{'name': 'bob'},{'name': 'sally'},{'name': 'buzz'}]);
+
+    expect(called).toBe(1);
+  });
+
 });
 
 describe('Context events', () => {

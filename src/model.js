@@ -85,7 +85,7 @@ const Model = function(_data) {
                     }
                 }
 
-                // Normal functionalty - ie. actuallt getting values
+                // Normal functionalty - ie. actually getting values
                 let result = Reflect.get(obj, prop);
 
                 if (parent.isObject(result)) {
@@ -341,15 +341,20 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
         }
     }
 
+    const wildcardNamespace = namespace.substr(0, namespace.lastIndexOf('.')+1) + '*';
+
     // Fire change type events
     switch (returnType) {
     case 'CREATE':
+        this.trigger('create:'+wildcardNamespace, updated);
         this.trigger('create:'+namespace, updated);
         break;
     case 'UPDATE':
+        this.trigger('update:'+wildcardNamespace, updated, original);
         this.trigger('update:'+namespace, updated, original);
         break;
     case 'REMOVE':
+        this.trigger('remove:'+wildcardNamespace, original);
         this.trigger('remove:'+namespace, original);
         break;
     case 'NONE':
