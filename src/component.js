@@ -30,7 +30,7 @@ const eventOverride = {
 const Component = function() {
     // Component
     const ComponentImplementation = function(config) {
-    // Copy methods to Object
+        // Copy methods to Object
         if (config) {
             Object.keys(config).forEach(function(key) {
                 if (key != 'events') this[key] = config[key];
@@ -59,7 +59,7 @@ const Component = function() {
         }
     };
     ComponentImplementation.prototype.on = function(key, method) {
-    // Add a listener
+        // Add a listener
         const split = key.indexOf(' ');
         let event = (split===-1) ? key : key.substr(0, split);
         const target = (split===-1) ? '' : key.substr(split+1);
@@ -105,14 +105,14 @@ const Component = function() {
         return this;
     };
     ComponentImplementation.prototype.off = function(key) {
-    // Remove a listener
+        // Remove a listener
         for (const [event, handler] of this._events[key] || []) {
             this.el.removeEventListener(event, handler);
         }
         delete this._events[key];
     };
     ComponentImplementation.prototype.connect = function(events) {
-    // Create events on new obj, so components don't share
+        // Create events on new obj, so components don't share
         this._events = [];
         if (!events || typeof events !== 'object') return;
         // connected all events
@@ -121,10 +121,14 @@ const Component = function() {
         }
     };
     ComponentImplementation.prototype.disconnect = function() {
-    // Remove all events
+        // Remove all events
         for (const [key] of Object.entries(this._events)) {
             this.off(key);
         }
+    };
+    ComponentImplementation.prototype.destroy = function() {
+        this.disconnect();
+        if (this.el) this.el.remove();
     };
     ComponentImplementation.prototype.listenTo = function(model) {
         if (typeof model.addListener !== 'function') {

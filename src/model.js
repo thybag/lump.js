@@ -341,24 +341,27 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
         }
     }
 
+    // Workout wildcard datapath
     const wildcardNamespace = namespace.substr(0, namespace.lastIndexOf('.')+1) + '*';
+    // reload updated from store so we return proxy instance of objects
+    const updatedData = (typeof updated === 'object') ? this.get(namespace) : updated;
 
     // Fire change type events
     switch (returnType) {
     case 'CREATE':
-        this.trigger('create:'+wildcardNamespace, updated);
-        this.trigger('create:'+namespace, updated);
+        this.trigger('create:'+wildcardNamespace, updatedData);
+        this.trigger('create:'+namespace, updatedData);
         break;
     case 'UPDATE':
-        this.trigger('update:'+wildcardNamespace, updated, original);
-        this.trigger('update:'+namespace, updated, original);
+        this.trigger('update:'+wildcardNamespace, updatedData, original);
+        this.trigger('update:'+namespace, updatedData, original);
         break;
     case 'REMOVE':
         this.trigger('remove:'+wildcardNamespace, original);
         this.trigger('remove:'+namespace, original);
         break;
     case 'NONE':
-        this.trigger('unchanged:'+namespace, original);
+        this.trigger('unchanged:'+namespace, updatedData);
         break;
     }
 
@@ -372,7 +375,7 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
 // Apply change to original, so new changes can be detected
 Model.prototype.commitChanges = function(keys, original, updated) {
     const next = keys.shift();
-    // Insert either at most accurate point, or where original deoes not yet exist
+    // Insert either at most accurate point, or where original does not yet exist
     if (keys.length == 0 || !original[next]) {
         original[next] = this.copy(updated[next]);
         return;

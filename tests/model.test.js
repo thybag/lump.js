@@ -466,4 +466,18 @@ describe('Context events', () => {
     data = data.refresh();
     expect(data.name).toBe('def');
   });
+
+  test('Listener objects use proxy data not real data', () => {
+    testModel.set('test.testing', {'name': 'bobbert'});
+    let testing = testModel.get('test.testing');
+    let count = 0;
+
+    testing.on('update', (updated) => {
+      count++;
+      expect(updated.context()).toBe('test.testing');
+    });
+
+    testModel.set('test.testing', {'name': 'ziggy'});
+    expect(count).toBe(1);
+  });
 });  
