@@ -160,7 +160,7 @@ const Component = function() {
     // Define base component
     this.define = function(config) {
         const definedComponent = new Component;
-        definedComponent.config = config;
+        definedComponent.config = {...this.config, ...config};
         return definedComponent;
     };
 };
