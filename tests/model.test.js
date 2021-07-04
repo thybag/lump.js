@@ -381,6 +381,46 @@ describe('Simple change detection', () => {
     expect(called).toBe(1);
   });
 
+  test('Test simple array match', () => {
+    testModel.set('abc', ['bob']);
+
+    testModel.on('change', (type, namespace, updated, original) => {
+      expect(type).toBe('NONE');
+    });
+
+    testModel.set('abc', ['bob']);
+  });
+
+  test('Test simple object match', () => {
+    testModel.set('abc', {name:'bob'});
+
+    testModel.on('change', (type, namespace, updated, original) => {
+      expect(type).toBe('NONE');
+    });
+
+    testModel.set('abc', {name:'bob'});
+  });
+
+  test('Empty object match', () => {
+    testModel.set('abc', []);
+
+    testModel.on('change', (type, namespace, updated, original) => {
+      expect(type).toBe('NONE');
+    });
+
+    testModel.set('abc', []);
+  });
+
+  test('Empty array match', () => {
+    testModel.set('abc', []);
+
+    testModel.on('change', (type, namespace, updated, original) => {
+      expect(type).toBe('NONE');
+    });
+
+    testModel.set('abc', []);
+  });
+
 });
 
 describe('Context events', () => {

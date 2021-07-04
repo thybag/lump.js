@@ -328,6 +328,7 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
             if (typeof updated === 'undefined' && typeof original === 'undefined') returnType = 'REMOVE';
             if (typeof original === 'undefined') returnType = 'CREATE';
             if (typeof updated === 'undefined') returnType = 'REMOVE';
+            if (results.length === 0) returnType = 'NONE'; // Empty
 
             // If all the sub objects were unchanged, the ob was unchanged.
             if (results.length !== 0 && results.every(function(val) {
