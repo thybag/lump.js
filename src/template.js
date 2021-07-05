@@ -1,19 +1,20 @@
 /**
  * [safeText description]
- * @param  {[type]} text [description]
+ * @param  {[type]} data [description]
  * @return {[type]}      [description]
  */
-function safeText(text) {
+function safeText(data) {
     // Recusivly make sub objects safe
-    if (typeof text === 'object') {
-        return text.map((value) => {
-            return safeText(value);
+    if (typeof data === 'object') {
+        Object.entries(data).forEach(([key, value]) => {
+            data[key] = safeText(value);
         });
+        return data;
     }
 
     // Render as text node
     const html = document.createElement('p');
-    html.appendChild(document.createTextNode(text));
+    html.appendChild(document.createTextNode(data));
     return html.innerHTML;
 }
 
@@ -28,14 +29,14 @@ function Template(methods) {
         // Escape input values
         if (methods.safe !== false) {
             // Ensure args are safe
-            args = args.map((value) => {
+            args = args.map( (value) => {
                 return safeText(value);
             });
         }
 
         // Render template itself
         const container = document.createElement('div');
-        const tpl = methods.template(...args);
+        const tpl = (typeof methods.template === 'function') ? methods.template(...args) : methods.template;
         container.innerHTML = tpl;
 
         if (methods.className) {

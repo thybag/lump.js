@@ -4,7 +4,7 @@
   "description": "A simple component and reactive model library",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "lint": "eslint src/"
+    "lint": "eslint ."
   },
   "repository": {
     "type": "git",

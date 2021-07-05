@@ -200,8 +200,11 @@ Model.prototype.trigger = function(event, ...args) {
     }
 
     // Fire listeners
-    for (const listener of this._listeners) {
-        listener.trigger(event, ...args);
+    for (const [listener, ns] of this._listeners) {
+        // Optionally namespace listener.
+        // e.g. players:update:name
+        const namespace = ns ? ns+':' : '';
+        listener.trigger(namespace+event, ...args);
     }
 };
 
@@ -243,24 +246,27 @@ Model.prototype.off = function(key, method) {
 /**
  * Register self as an external listener for model events
  * @param {[type]} listener [description]
+ * @param {[type]} namespace [description]
  * @return {object} model
  */
-Model.prototype.addListener = function(listener) {
+Model.prototype.addListener = function(listener, namespace = '') {
     if (typeof listener.trigger !== 'function') {
         throw new Error('Unsupported listener type provided. Must implement trigger method.');
     }
-    this._listeners.push(listener);
+    this._listeners.push([listener, namespace]);
     return this;
 };
 /**
  * Remove self as an external listener for model events
  * @param {[type]} listener [description]
+ * @param {[type]} namespace [description]
  * @return {object} model
  */
-Model.prototype.removeListener = function(listener) {
-    const idx = this._listeners.indexOf(listener);
+Model.prototype.removeListener = function(listener, namespace = '') {
+    const _listener = [listener, namespace];
+    const idx = this._listeners.indexOf(_listener);
     if (idx !== -1) {
-        this._listeners.splice(this._listeners.indexOf(listener), 1);
+        this._listeners.splice(this._listeners.indexOf(_listener), 1);
     }
     return this;
 };
