@@ -523,3 +523,109 @@ describe('Context events', () => {
         expect(count).toBe(1);
     });
 });
+
+describe('Listeners', () => {
+    let testModel;
+
+    beforeEach(() => {
+        testModel = makeTestModel();
+    });
+
+    test('Add listener', () => {
+        let count = 0;
+        const events = [
+            'update:name',
+            'update:*',
+            'change:name',
+            'change:*',
+            'change',
+            'updated',
+        ];
+        const listener = {
+            trigger(evt) {
+                count++;
+                expect(evt).toBe(events.shift());
+            },
+        };
+
+        testModel.subscribe(listener);
+
+        testModel.set('name', 'Bob');
+        expect(count).toBe(6);
+    });
+
+    test('Add listener with namespace', () => {
+        let count = 0;
+        const events = [
+            'potato:update:name',
+            'potato:update:*',
+            'potato:change:name',
+            'potato:change:*',
+            'potato:change',
+            'potato:updated',
+        ];
+        const listener = {
+            trigger(evt) {
+                count++;
+                expect(evt).toBe(events.shift());
+            },
+        };
+
+        testModel.subscribe(listener, 'potato');
+
+        testModel.set('name', 'Bob');
+        expect(count).toBe(6);
+    });
+
+    test('remove listener', () => {
+        let count = 0;
+        const events = [
+            // first listener
+            'update:name',
+            'test:update:name',
+            'update:*',
+            'test:update:*',
+            'change:name',
+            'test:change:name',
+            'change:*',
+            'test:change:*',
+            'change',
+            'test:change',
+            'updated',
+            'test:updated',
+            // none namespaced sub removed
+            'test:update:name',
+            'test:update:*',
+            'test:change:name',
+            'test:change:*',
+            'test:change',
+            'test:updated',
+        ];
+
+
+        const listener = {
+            trigger(evt) {
+                count++;
+                expect(evt).toBe(events.shift());
+            },
+        };
+
+        testModel.subscribe(listener);
+        testModel.subscribe(listener, 'test');
+
+        testModel.set('name', 'Bob');
+        expect(count).toBe(12);
+
+        testModel.unsubscribe(listener);
+
+        testModel.set('name', 'Jim');
+        expect(count).toBe(18);
+
+        testModel.unsubscribe(listener, 'test');
+
+        testModel.set('name', 'Zippy');
+        expect(count).toBe(18);
+    });
+});
+
+

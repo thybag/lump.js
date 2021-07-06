@@ -157,7 +157,7 @@ const Component = function() {
 
         // Add listener to own model
         if (this._model) {
-            this._model.addListener(this, 'data');
+            this._model.subscribe(this, 'data');
             this.on('data:updated', 'render');
         }
 
@@ -179,7 +179,7 @@ const Component = function() {
         }
 
         // Remove listener from own model
-        if (this._model) this._model.removeListener(this, 'data');
+        if (this._model) this._model.unsubscribe(this, 'data');
     };
 
     /**
