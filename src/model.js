@@ -1,3 +1,5 @@
+const jsPathRegex = /([^[.\]])+/g;
+
 /**
  * Basic model to watch data. Will fire events on changed parts of data tree.
  *
@@ -8,27 +10,30 @@ const Model = function(_data) {
     // Cache data access/edit
     const _cache = new WeakMap();
     const _original = JSON.parse(JSON.stringify(_data));
-
-    // Confirm whether a raw read is taking place.
-    let _rawRead;
+    // Live data proxy
+    const _real = newDataProxy(_data, '');
 
     // Eventing
     this._events = {};
     this._subscribers = [];
 
-    // toggle to bypass magic methods
-    this._ignoreMagicMethods = false;
+    /**
+     * _get data from real store
+     *
+     * @param  {[type]} key      [description]
+     * @param  {[type]} fallback [description]
+     * @return {[type]}          [description]
+     */
+    function _get(key, fallback = undefined) {
+        if (!key) return _real;
 
-    // Apply detected changes.
-    this.applyChanges = function(ctx) {
-    // Detect changes to data, fireing events as needed.
-        const change = this.detectChanges(ctx.split('.'), _original, _data);
-        // Update internal data cache to match
-        if (change !== 'NONE') {
-            this.commitChanges(ctx.split('.'), _original, _data);
-            this.trigger('updated');
-        }
-    };
+        const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
+        const result = (
+            keyArray.reduce((prevObj, key) => prevObj && prevObj[key], _real) || fallback
+        );
+
+        return result;
+    }
 
     /**
      * Create watcher proxy to manage each object in model
@@ -39,78 +44,16 @@ const Model = function(_data) {
      * @param  {string} context datapath to current object
      * @return {Proxy}          Object wrapped in Proxy
      */
-    function newProxy(result, context) {
+    function newDataProxy(result, context) {
         const proxyTraps = {
             get: function(obj, prop, receiver) {
                 const ctx = context ? context + '.' + prop : prop;
-
-                // Magic methods are temproarly disabled as part of gets using the
-                // `get` method, so as to allow datapoints using protected names
-                // such as get,set,on etc to be accessed directly if needed.
-                if (!parent._ignoreMagicMethods) {
-                    // Magic methods, as standard these names cannot be used for datapoints
-                    // usless via the get/set methods themselves
-                    if (prop == 'get') {
-                        return function(key) {
-                            return parent.get(`${context}.${key}`);
-                        };
-                    }
-
-                    if (prop == 'set') {
-                        return function(key, value) {
-                            return parent.set(`${context}.${key}`, value);
-                        };
-                    }
-
-                    if (prop == 'on') {
-                        return function(event, callback) {
-                            let listener = `${event}:${context}`;
-                            // Event may either be purely the event type (change,update)
-                            // or type + sub key change:subAttr. In case of sub attr
-                            // we want to insert context between the event and the path
-                            if (event.includes(':')) {
-                                const parts = event.split(':');
-                                listener = `${parts[0]}:${context}.${parts[1]}`;
-                            }
-                            return parent.on(listener, callback);
-                        };
-                    }
-
-                    // Get datapath to this object
-                    if (prop == 'getContext') {
-                        return () => context;
-                    }
-
-                    // Get datapath to this object
-                    if (prop == 'getReal') {
-                        return () => obj;
-                    }
-                }
-
-                // Ensure data can never get detached.
-                // 
-                // ie. you have the data data.player.fred {name,email}
-                // you store a ref to fred, and use that to read name/email.
-                // now someone comes along and updates the player data with a whole new object
-                // fred is still there, unchanged, but your now holding an orphaned ref, rather than the original.
-                // 
-                // To solve this, all reads actually perform a raw-read from the root. For this lookup
-                // read events are supressed. The final result is then provided to the caller
-                // 
-                if (!_rawRead) {
-                    _rawRead = true;
-                    let responce = parent.get(ctx);
-                    _rawRead = false;
-                    
-                    parent.trigger('read', ctx);
-                    return responce;
-                }
 
                 // Normal functionalty - ie. actually getting values
                 let result = Reflect.get(obj, prop);
 
                 if (parent.isObject(result)) {
-                    result = newProxy(result, ctx);
+                    result = newDataProxy(result, ctx);
                 }
 
                 return result;
@@ -118,9 +61,7 @@ const Model = function(_data) {
             set: function(obj, prop, value) {
                 // Change value & grab context
                 const ctx = context ? context + '.' + prop : prop;
-                // Get parent from datapath
-                const target = parent.get(context).getReal();
-                const success = Reflect.set(target, prop, value);
+                const success = Reflect.set(obj, prop, value);
                 // Detect changes and fire relevent events
                 parent.applyChanges(ctx);
 
@@ -132,44 +73,96 @@ const Model = function(_data) {
         _cache.set(result, resultProxy);
         return resultProxy;
     }
-    // Watch changes via proxy
-    this.data = newProxy(_data, '');
+
+    /**
+     * Create accesser proxy to manage access to data model
+     * Holds a context data-path, which is then uses to get/set
+     * data from the store.
+     *
+     * This approach means that stored re fences in code will never
+     * become out of data, or become orphaned from the store
+     *
+     * @param  {string} context datapath to current object
+     * @return {Proxy}          Object wrapped in Proxy
+     */
+    function newAccessProxy(context) {
+        const proxyTraps = {
+            get: function(obj, prop, receiver) {
+                const ctx = context ? context + '.' + prop : prop;
+
+                // Magic methods, as standard these names cannot be used for data points
+                // useless via the get/set methods themselves
+                switch (prop) {
+                case 'get':
+                    return function(key) {
+                        return parent.get(`${context}.${key}`);
+                    };
+                case 'set':
+                    return function(key, value) {
+                        return parent.set(`${context}.${key}`, value);
+                    };
+                case 'on':
+                    return function(event, callback) {
+                        let listener = `${event}:${context}`;
+                        // Event may either be purely the event type (change,update)
+                        // or type + sub key change:subAttr. In case of sub attr
+                        // we want to insert context between the event and the path
+                        if (event.includes(':')) {
+                            const parts = event.split(':');
+                            listener = `${parts[0]}:${context}.${parts[1]}`;
+                        }
+                        return parent.on(listener, callback);
+                    };
+                case 'getContext':
+                    return () => context;
+                }
+
+                return parent.get(ctx);
+            },
+            set: function(obj, prop, value) {
+                const ctx = context ? context + '.' + prop : prop;
+                return parent.set(ctx, value);
+            },
+        };
+        // Config proxy or get from cache
+        return new Proxy({}, proxyTraps);
+    }
+
+    this.data = newAccessProxy();
+
+    this.get = function(key, fallback) {
+        const result = _get(key, fallback);
+        return (parent.isObject(result)) ? newAccessProxy(key) : result;
+    };
+
+    // Apply detected changes.
+    this.applyChanges = function(ctx) {
+        // Detect changes to data, fireing events as needed.
+        const change = this.detectChanges(ctx.split('.'), _original, _data);
+        // Update internal data cache to match
+        if (change !== 'NONE') {
+            this.commitChanges(ctx.split('.'), _original, _data);
+            this.trigger('updated');
+        }
+    };
+
+    this.getDataRoot = function() {
+        return _real;
+    };
 };
 
-const jsPathRegex = /([^[.\]])+/g;
-
-/**
- * Get value from model
- *
- * @param  {string} key      Object path using dot or array notation.
- * @param  {[type]} fallback [description]
- * @return {[type]}          [description]
- */
-Model.prototype.get = function(key, fallback = undefined) {
-    if (!key) return this.data;
-
-    const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
-
-    // Toggle magic methods off to allow get to access `get`,`on` if needed.
-    this._ignoreMagicMethods = true;
-    const result = (
-        keyArray.reduce((prevObj, key) => prevObj && prevObj[key], this.data) || fallback
-    );
-    this._ignoreMagicMethods = false;
-
-    return result;
-};
 
 /**
  * Set value on model
  * @param {string} key      Object path using dot or array notation.
  * @param {[type]} value [description]
+ * @return {boolean} sucess
  */
 Model.prototype.set = function(key, value) {
     // Get key path
     const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
     // Setup vars
-    let base = this.data;
+    let base = this.getDataRoot();
     let insert; let insertLocation;
 
     // Iterate object
@@ -200,6 +193,8 @@ Model.prototype.set = function(key, value) {
         const [location, key] = insertLocation;
         location[key] = insert[key];
     }
+
+    return true;
 };
 
 /**
@@ -211,7 +206,7 @@ Model.prototype.set = function(key, value) {
 Model.prototype.trigger = function(event, ...args) {
     // Fire own event
     for (const i of this._events[event] || []) {
-    // Trigger event (either func or method to call)
+        // Trigger event (either func or method to call)
         if (typeof i[1] === 'function') {
             i[1](...args);
         } else {

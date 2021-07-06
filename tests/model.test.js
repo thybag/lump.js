@@ -32,8 +32,8 @@ describe('Test basic get functionalty', () => {
         expect(testModel.data.stuff.info[1]).toBe(2);
     });
     test('Get root data', () => {
-        expect(testModel.get()).toBe(testModel.data);
-        expect(testModel.get('')).toBe(testModel.data);
+        expect(testModel.get().name).toBe('dave');
+        expect(testModel.get('').name).toBe('dave');
     });
     test('non-nested getting', () => {
         expect(testModel.get('name')).toBe('dave');
@@ -507,7 +507,7 @@ describe('Context events', () => {
 
         // When using a local obj, complete refresh of object can lead to it becoming
         // orphaned. Refresh model allows it to figure out its real version again.
-        let data = testModel.get('test.data');
+        const data = testModel.get('test.data');
 
         testModel.set('test', {'data': {name: 'def'}});
 
@@ -519,19 +519,19 @@ describe('Context events', () => {
 
         // When using a local obj, complete refresh of object can lead to it becoming
         // orphaned. Refresh model allows it to figure out its real version again.
-        let data = testModel.get('test.data');
+        const data = testModel.get('test.data');
 
         testModel.set('test', {});
 
         expect(data.name).toBe(undefined);
     });
 
-     test('Ensure orphaned object can set values correctly', () => {
+    test('Ensure orphaned object can set values correctly', () => {
         testModel.set('test', {'data': {name: 'abc'}});
 
         // When using a local obj, complete refresh of object can lead to it becoming
         // orphaned. Refresh model allows it to figure out its real version again.
-        let data = testModel.get('test.data');
+        const data = testModel.get('test.data');
         testModel.set('test', {'data': {name: 'def'}});
 
         data.set('name', 'huh');
@@ -544,7 +544,7 @@ describe('Context events', () => {
 
         // When using a local obj, complete refresh of object can lead to it becoming
         // orphaned. Refresh model allows it to figure out its real version again.
-        let data = testModel.get('test.data');
+        const data = testModel.get('test.data');
         testModel.set('test', {'data': {name: 'def'}});
 
         data.name = 'hmm';
