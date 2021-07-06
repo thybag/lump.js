@@ -1,6 +1,6 @@
 {
   "name": "lumpjs",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "A simple component and reactive model library",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
