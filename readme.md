@@ -38,60 +38,23 @@ A simple wrapper around some rendered markup, using delegated events.
 * **Make** - Create a new component using a given config
 * **Define** - setup a reusable component. This can be invoked by calling make on them with the data/overrides you would like to use.
 
-```js
-let InfoBox = Component.make({
-    el: document.getElementById('infobox'),
-    initialize: function () {
-        // Setup
-        this.render();
-    },
+```js     
+Component.make({
+    el: document.body,
+    template: (count) => `Count ${count} <button>Click</button>`,
+    data: {
+        count: 0
+    }, 
     events: {
-        "click button.load": "loadData",
+        'click button': 'increment'
     },
-    render: function () {
-        let fragment = document.createDocumentFragment();
-        // Render logic
-
-        // Set HTML
-        this.el.innerHTML = '';
-        this.el.appendChild(fragment);
+    increment() { 
+        this.data.count++; 
     },
-    loadData: async function(contentId) {
-        let data = await fetch("test/endpoint");
-        let json = await data.json();
-
-        console.log("data ready. Store it and render")
-        this.render();
+    render() {
+        this.setEl(this.tpl(this.data.count));
     }
 });
-
-let GenericInfoBox = Component.define({
-    initialize: function () {
-        // Setup
-        this.render();
-    },
-    events: {
-        "click button.load": "loadData",
-    },
-    render: function () {
-        let fragment = document.createDocumentFragment();
-        // Render logic
-
-        // Set HTML
-        this.el.innerHTML = '';
-        this.el.appendChild(fragment);
-    },
-});
-
-let SpecificInfoBox = GenericInfoBox.make({
-    el: document.getElementById('infobox'),
-    loadData: async function(contentId) {
-        let data = await fetch("test/endpoint");
-        let json = await data.json();
-        this.render();
-    }
-})
-
 ```
 
 ## Model

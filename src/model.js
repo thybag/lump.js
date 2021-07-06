@@ -11,7 +11,7 @@ const Model = function(_data) {
 
     // Eventing
     this._events = {};
-    this._listeners = [];
+    this._subscribers = [];
 
     // toggle to bypass magic methods
     this._ignoreMagicMethods = false;
@@ -200,8 +200,11 @@ Model.prototype.trigger = function(event, ...args) {
     }
 
     // Fire listeners
-    for (const listener of this._listeners) {
-        listener.trigger(event, ...args);
+    for (const [subscriber, ns] of this._subscribers) {
+        // Optionally namespace listener.
+        // e.g. players:update:name
+        const namespace = ns ? ns+':' : '';
+        subscriber.trigger(namespace+event, ...args);
     }
 };
 
@@ -242,26 +245,28 @@ Model.prototype.off = function(key, method) {
 
 /**
  * Register self as an external listener for model events
- * @param {[type]} listener [description]
+ * @param {[type]} subscriber [description]
+ * @param {[type]} namespace [description]
  * @return {object} model
  */
-Model.prototype.addListener = function(listener) {
-    if (typeof listener.trigger !== 'function') {
+Model.prototype.subscribe = function(subscriber, namespace = '') {
+    if (typeof subscriber.trigger !== 'function') {
         throw new Error('Unsupported listener type provided. Must implement trigger method.');
     }
-    this._listeners.push(listener);
+    this._subscribers.push([subscriber, namespace]);
     return this;
 };
 /**
  * Remove self as an external listener for model events
- * @param {[type]} listener [description]
+ * @param {[type]} subscriber [description]
+ * @param {[type]} namespace [description]
  * @return {object} model
  */
-Model.prototype.removeListener = function(listener) {
-    const idx = this._listeners.indexOf(listener);
-    if (idx !== -1) {
-        this._listeners.splice(this._listeners.indexOf(listener), 1);
-    }
+Model.prototype.unsubscribe = function(subscriber, namespace = '') {
+    this._subscribers = this._subscribers.filter(([sub, ns]) => {
+        return !(ns === namespace && sub === subscriber);
+    });
+
     return this;
 };
 
@@ -350,16 +355,16 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
     // Fire change type events
     switch (returnType) {
     case 'CREATE':
-        this.trigger('create:'+wildcardNamespace, updatedData);
         this.trigger('create:'+namespace, updatedData);
+        this.trigger('create:'+wildcardNamespace, updatedData);
         break;
     case 'UPDATE':
-        this.trigger('update:'+wildcardNamespace, updatedData, original);
         this.trigger('update:'+namespace, updatedData, original);
+        this.trigger('update:'+wildcardNamespace, updatedData, original);
         break;
     case 'REMOVE':
-        this.trigger('remove:'+wildcardNamespace, original);
         this.trigger('remove:'+namespace, original);
+        this.trigger('remove:'+wildcardNamespace, original);
         break;
     case 'NONE':
         this.trigger('unchanged:'+namespace, updatedData);
@@ -367,7 +372,11 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
     }
 
     // Fire general change events, both namspaced and global.
-    this.trigger('change:'+namespace, returnType, updated, original);
+    if (returnType !== 'NONE') {
+        this.trigger('change:'+namespace, returnType, updated, original);
+        this.trigger('change:'+wildcardNamespace, returnType, updated, original);
+    }
+
     this.trigger('change', returnType, namespace, updated, original);
 
     return returnType;
