@@ -9,6 +9,9 @@ const Model = function(_data) {
     const _cache = new WeakMap();
     const _original = JSON.parse(JSON.stringify(_data));
 
+    // Confirm whether a raw read is taking place.
+    let _rawRead;
+
     // Eventing
     this._events = {};
     this._subscribers = [];
@@ -73,16 +76,34 @@ const Model = function(_data) {
                         };
                     }
 
-                    // Get latest version of this object.
-                    // Can happen if old object gets disconnected
-                    if (prop == 'refresh') {
-                        return () => parent.get(context);
+                    // Get datapath to this object
+                    if (prop == 'getContext') {
+                        return () => context;
                     }
 
                     // Get datapath to this object
-                    if (prop == 'context') {
-                        return () => context;
+                    if (prop == 'getReal') {
+                        return () => obj;
                     }
+                }
+
+                // Ensure data can never get detached.
+                // 
+                // ie. you have the data data.player.fred {name,email}
+                // you store a ref to fred, and use that to read name/email.
+                // now someone comes along and updates the player data with a whole new object
+                // fred is still there, unchanged, but your now holding an orphaned ref, rather than the original.
+                // 
+                // To solve this, all reads actually perform a raw-read from the root. For this lookup
+                // read events are supressed. The final result is then provided to the caller
+                // 
+                if (!_rawRead) {
+                    _rawRead = true;
+                    let responce = parent.get(ctx);
+                    _rawRead = false;
+                    
+                    parent.trigger('read', ctx);
+                    return responce;
                 }
 
                 // Normal functionalty - ie. actually getting values
@@ -92,15 +113,14 @@ const Model = function(_data) {
                     result = newProxy(result, ctx);
                 }
 
-                // Trigger read event
-                parent.trigger('read', ctx);
                 return result;
             },
             set: function(obj, prop, value) {
                 // Change value & grab context
-                const success = Reflect.set(obj, prop, value);
                 const ctx = context ? context + '.' + prop : prop;
-
+                // Get parent from datapath
+                const target = parent.get(context).getReal();
+                const success = Reflect.set(target, prop, value);
                 // Detect changes and fire relevent events
                 parent.applyChanges(ctx);
 
@@ -126,7 +146,7 @@ const jsPathRegex = /([^[.\]])+/g;
  * @return {[type]}          [description]
  */
 Model.prototype.get = function(key, fallback = undefined) {
-    if (!key) return fallback;
+    if (!key) return this.data;
 
     const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
 
