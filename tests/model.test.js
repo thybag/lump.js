@@ -31,6 +31,10 @@ describe('Test basic get functionalty', () => {
     test('data object array is populated', () => {
         expect(testModel.data.stuff.info[1]).toBe(2);
     });
+    test('Get root data', () => {
+        expect(testModel.get().name).toBe('dave');
+        expect(testModel.get('').name).toBe('dave');
+    });
     test('non-nested getting', () => {
         expect(testModel.get('name')).toBe('dave');
     });
@@ -55,6 +59,9 @@ describe('Test basic get functionalty', () => {
     test('Get allows access to values with protected names', () => {
         testModel.data.get = 'test';
         expect(testModel.get('get')).toBe('test');
+    });
+    test('Get something that doesnt exist', () => {
+        expect(testModel.get('bacon.egg.sausage')).toBe(undefined);
     });
 });
 
@@ -492,21 +499,57 @@ describe('Context events', () => {
     test('Get context', () => {
         testModel.set('test.testing.1', {'name': 'bobbert'});
         const testing = testModel.get('test.testing.1');
-        expect(testing.context()).toBe('test.testing.1');
+        expect(testing.getContext()).toBe('test.testing.1');
     });
 
-    test('Can refresh', () => {
+    test('Ensure orphaned object, still shows latest from datapath', () => {
         testModel.set('test', {'data': {name: 'abc'}});
 
         // When using a local obj, complete refresh of object can lead to it becoming
         // orphaned. Refresh model allows it to figure out its real version again.
-        let data = testModel.get('test.data');
+        const data = testModel.get('test.data');
 
         testModel.set('test', {'data': {name: 'def'}});
 
-        expect(data.name).toBe('abc');
-        data = data.refresh();
         expect(data.name).toBe('def');
+    });
+
+    test('Ensure orphaned object handles no longer existing in datapath', () => {
+        testModel.set('test', {'data': {name: 'abc'}});
+
+        // When using a local obj, complete refresh of object can lead to it becoming
+        // orphaned. Refresh model allows it to figure out its real version again.
+        const data = testModel.get('test.data');
+
+        testModel.set('test', {});
+
+        expect(data.name).toBe(undefined);
+    });
+
+    test('Ensure orphaned object can set values correctly', () => {
+        testModel.set('test', {'data': {name: 'abc'}});
+
+        // When using a local obj, complete refresh of object can lead to it becoming
+        // orphaned. Refresh model allows it to figure out its real version again.
+        const data = testModel.get('test.data');
+        testModel.set('test', {'data': {name: 'def'}});
+
+        data.set('name', 'huh');
+
+        expect(testModel.get('test.data.name')).toBe('huh');
+    });
+
+    test('Ensure orphaned object can set values correctly', () => {
+        testModel.set('test', {'data': {name: 'abc'}});
+
+        // When using a local obj, complete refresh of object can lead to it becoming
+        // orphaned. Refresh model allows it to figure out its real version again.
+        const data = testModel.get('test.data');
+        testModel.set('test', {'data': {name: 'def'}});
+
+        data.name = 'hmm';
+
+        expect(testModel.get('test.data.name')).toBe('hmm');
     });
 
     test('Listener objects use proxy data not real data', () => {
@@ -516,7 +559,7 @@ describe('Context events', () => {
 
         testing.on('update', (updated) => {
             count++;
-            expect(updated.context()).toBe('test.testing');
+            expect(updated.getContext()).toBe('test.testing');
         });
 
         testModel.set('test.testing', {'name': 'ziggy'});
