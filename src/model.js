@@ -152,6 +152,8 @@ const Model = function(_data) {
                 if (prop === 'set') return magicSet(parent, context);
                 if (prop === 'on') return magicOn(parent, context);
                 if (prop === 'getContext') return () => context;
+                // Support json stringify by pass access to the real object
+                if (prop === 'toJSON') return () => _get(context);
 
                 // else just get as normal
                 return parent.get(getContext(context, prop));

@@ -671,4 +671,15 @@ describe('Listeners', () => {
     });
 });
 
+describe('Misc', () => {
+    test('stringify', () => {
+        const obj = {
+            'hello': 'world',
+            'test': [1, 2],
+        };
+        const test = new Model(obj);
 
+        expect(JSON.stringify(test.data)).toBe(JSON.stringify(obj));
+        expect(JSON.stringify(test.data.test)).toBe('[1,2]');
+    });
+});
