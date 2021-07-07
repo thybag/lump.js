@@ -196,11 +196,11 @@ const Component = function() {
      * @param  {[type]} model     [description]
      * @param  {String} namespace [description]
      */
-    ComponentImplementation.prototype.listenTo = function(model, namespace = '') {
-        if (typeof model.addListener !== 'function') {
+    ComponentImplementation.prototype.subscribeTo = function(model, namespace = '') {
+        if (typeof model.subscribe !== 'function') {
             throw new Error('Model does not support listeners');
         }
-        model.addListener(this, namespace);
+        model.subscribe(this, namespace);
     };
 
     /**

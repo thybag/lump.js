@@ -7,9 +7,11 @@ const jsPathRegex = /([^[.\]])+/g;
  */
 const Model = function(_data) {
     const parent = this;
+
     // Cache data access/edit
     const _cache = new WeakMap();
     const _original = JSON.parse(JSON.stringify(_data));
+
     // Live data proxy
     const _real = newDataProxy(_data, '');
 
@@ -17,8 +19,10 @@ const Model = function(_data) {
     this._events = {};
     this._subscribers = [];
 
+    // Private methods
+
     /**
-     * _get data from real store
+     * _get value from real store
      *
      * @param  {[type]} key      [description]
      * @param  {[type]} fallback [description]
@@ -36,6 +40,67 @@ const Model = function(_data) {
     }
 
     /**
+     * _set value on real object in store
+     *
+     * @param {string} key      Object path using dot or array notation.
+     * @param {[type]} value [description]
+     * @return {boolean} sucess
+     */
+    function _set(key, value) {
+        // Get key path
+        const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
+        // Setup vars
+        let base = _real;
+        let insert; let insertLocation;
+
+        // Iterate object
+        for (let i = 0; i < keyArray.length; i++ ) {
+            if (i === keyArray.length - 1) {
+                base[keyArray[i]] = value;
+            } else {
+                // If we need to create new objects as we walk the path, we need to
+                // do this in a new object rather than updating the existing tree directly.
+                // This is so that we avoid fireing duplicate update events after each nested
+                // object is added, and instead attach the object all in one go.
+                if (base[keyArray[i]] === undefined) {
+                    // If we start building a new tree, track where we need to reinsert
+                    if (!insertLocation) {
+                        insertLocation = [base, keyArray[i]];
+                        insert = base = {};
+                    }
+                    base[keyArray[i]] = {};
+                }
+
+                // Get next level
+                base = base[keyArray[i]];
+            }
+        }
+
+        // If we've build an external object, inject it into the model again
+        if (insertLocation) {
+            const [location, key] = insertLocation;
+            location[key] = insert[key];
+        }
+
+        return true;
+    }
+
+    /**
+     * Apply data changes
+     * @param  {[type]} ctx [description]
+     */
+    function applyChanges(ctx) {
+        // Detect changes to data, fireing events as needed.
+        const change = parent.detectChanges(ctx.split('.'), _original, _data);
+
+        // Update internal data cache to match
+        if (change !== 'NONE') {
+            parent.commitChanges(ctx.split('.'), _original, _data);
+            parent.trigger('updated');
+        }
+    }
+
+    /**
      * Create watcher proxy to manage each object in model
      * Provides access to get,set,on helpers + wraps access in proxies
      * in order to allow for dynamic change detection
@@ -46,28 +111,22 @@ const Model = function(_data) {
      */
     function newDataProxy(result, context) {
         const proxyTraps = {
-            get: function(obj, prop, receiver) {
-                const ctx = context ? context + '.' + prop : prop;
-
-                // Normal functionalty - ie. actually getting values
-                let result = Reflect.get(obj, prop);
-
-                if (parent.isObject(result)) {
-                    result = newDataProxy(result, ctx);
-                }
-
-                return result;
+            get(obj, prop, receiver) {
+                // Get real data from object
+                const result = Reflect.get(obj, prop);
+                // Return primitive or data wrapped in proxy
+                return parent.isObject(result) ? newDataProxy(result, getContext(context, prop)) : result;
             },
-            set: function(obj, prop, value) {
-                // Change value & grab context
-                const ctx = context ? context + '.' + prop : prop;
+            set(obj, prop, value) {
+                // Update local object
                 const success = Reflect.set(obj, prop, value);
-                // Detect changes and fire relevent events
-                parent.applyChanges(ctx);
+                // Trigger change detection and sync to original
+                applyChanges(getContext(context, prop));
 
                 return success;
             },
         };
+
         // Config proxy or get from cache
         const resultProxy = _cache.get(result) || new Proxy(result, proxyTraps);
         _cache.set(result, resultProxy);
@@ -75,7 +134,7 @@ const Model = function(_data) {
     }
 
     /**
-     * Create accesser proxy to manage access to data model
+     * Create accessor proxy to manage access to data model
      * Holds a context data-path, which is then uses to get/set
      * data from the store.
      *
@@ -87,115 +146,50 @@ const Model = function(_data) {
      */
     function newAccessProxy(context) {
         const proxyTraps = {
-            get: function(obj, prop, receiver) {
-                const ctx = context ? context + '.' + prop : prop;
+            get(obj, prop, receiver) {
+                // Handle magic methods for object
+                if (prop === 'get') return magicGet(parent, context);
+                if (prop === 'set') return magicSet(parent, context);
+                if (prop === 'on') return magicOn(parent, context);
+                if (prop === 'getContext') return () => context;
 
-                // Magic methods, as standard these names cannot be used for data points
-                // useless via the get/set methods themselves
-                switch (prop) {
-                case 'get':
-                    return function(key) {
-                        return parent.get(`${context}.${key}`);
-                    };
-                case 'set':
-                    return function(key, value) {
-                        return parent.set(`${context}.${key}`, value);
-                    };
-                case 'on':
-                    return function(event, callback) {
-                        let listener = `${event}:${context}`;
-                        // Event may either be purely the event type (change,update)
-                        // or type + sub key change:subAttr. In case of sub attr
-                        // we want to insert context between the event and the path
-                        if (event.includes(':')) {
-                            const parts = event.split(':');
-                            listener = `${parts[0]}:${context}.${parts[1]}`;
-                        }
-                        return parent.on(listener, callback);
-                    };
-                case 'getContext':
-                    return () => context;
-                }
-
-                return parent.get(ctx);
+                // else just get as normal
+                return parent.get(getContext(context, prop));
             },
-            set: function(obj, prop, value) {
-                const ctx = context ? context + '.' + prop : prop;
-                return parent.set(ctx, value);
+            set(obj, prop, value) {
+                // Set data to the context path
+                return parent.set(getContext(context, prop), value);
             },
         };
-        // Config proxy or get from cache
+
+        // Return access proxy
         return new Proxy({}, proxyTraps);
     }
 
-    this.data = newAccessProxy();
-
-    this.get = function(key, fallback) {
+    /**
+     * Get data from the store
+     *
+     * @param  {[type]} key      [description]
+     * @param  {[type]} fallback [description]
+     * @return {primitive|accessProxy}          [description]
+     */
+    this.get = (key, fallback) => {
         const result = _get(key, fallback);
         return (parent.isObject(result)) ? newAccessProxy(key) : result;
     };
 
-    // Apply detected changes.
-    this.applyChanges = function(ctx) {
-        // Detect changes to data, fireing events as needed.
-        const change = this.detectChanges(ctx.split('.'), _original, _data);
-        // Update internal data cache to match
-        if (change !== 'NONE') {
-            this.commitChanges(ctx.split('.'), _original, _data);
-            this.trigger('updated');
-        }
-    };
+    /**
+     * Set data to the store
+     * @param  {[type]} key   [description]
+     * @param  {[type]} value [description]
+     * @return {[type]}       [description]
+     */
+    this.set = (key, value) => _set(key, value);
 
-    this.getDataRoot = function() {
-        return _real;
-    };
+    // get data
+    this.data = this.get();
 };
 
-
-/**
- * Set value on model
- * @param {string} key      Object path using dot or array notation.
- * @param {[type]} value [description]
- * @return {boolean} sucess
- */
-Model.prototype.set = function(key, value) {
-    // Get key path
-    const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
-    // Setup vars
-    let base = this.getDataRoot();
-    let insert; let insertLocation;
-
-    // Iterate object
-    for (let i = 0; i < keyArray.length; i++ ) {
-        if (i === keyArray.length - 1) {
-            base[keyArray[i]] = value;
-        } else {
-            // If we need to create new objects as we walk the path, we need to
-            // do this in a new object rather than updating the existing tree directly.
-            // This is so that we avoid fireing duplicate update events after each nested
-            // object is added, and instead attach the object all in one go.
-            if (base[keyArray[i]] === undefined) {
-                // If we start building a new tree, track where we need to reinsert
-                if (!insertLocation) {
-                    insertLocation = [base, keyArray[i]];
-                    insert = base = {};
-                }
-                base[keyArray[i]] = {};
-            }
-
-            // Get next level
-            base = base[keyArray[i]];
-        }
-    }
-
-    // If we've build an external object, inject it into the model again
-    if (insertLocation) {
-        const [location, key] = insertLocation;
-        location[key] = insert[key];
-    }
-
-    return true;
-};
 
 /**
  * Trigger event on model
@@ -327,8 +321,8 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
 
     // Target depth reached.
     if (keys.length == 0) {
-    // Detect attribute changes to children
-    // ie. if you remove an object, its children need to fire remove events
+        // Detect attribute changes to children
+        // ie. if you remove an object, its children need to fire remove events
         if (this.isObject(updated) || this.isObject(original)) {
             // Check for field changes
             const fields = new Set([
@@ -407,5 +401,61 @@ Model.prototype.commitChanges = function(keys, original, updated) {
     }
     return this.commitChanges(keys, original[next], updated[next]);
 };
+
+
+/**
+ * Proxy access for `get`
+ * @param  {[type]} parent  [description]
+ * @param  {[type]} context [description]
+ * @return {[type]}         [description]
+ */
+function magicGet(parent, context) {
+    return function(key) {
+        return parent.get(`${context}.${key}`);
+    };
+}
+
+/**
+ * Proxy access for `set`
+ * @param  {[type]} parent  [description]
+ * @param  {[type]} context [description]
+ * @return {[type]}         [description]
+ */
+function magicSet(parent, context) {
+    return function(key, value) {
+        return parent.set(`${context}.${key}`, value);
+    };
+}
+
+/**
+ * Proxy access for `on`
+ * @param  {[type]} parent  [description]
+ * @param  {[type]} context [description]
+ * @return {[type]}         [description]
+ */
+function magicOn(parent, context) {
+    return function(event, callback) {
+        let listener = `${event}:${context}`;
+        // Event may either be purely the event type (change,update)
+        // or type + sub key change:subAttr. In case of sub attr
+        // we want to insert context between the event and the path
+        if (event.includes(':')) {
+            const parts = event.split(':');
+            listener = `${parts[0]}:${context}.${parts[1]}`;
+        }
+        return parent.on(listener, callback);
+    };
+}
+
+/**
+ * getContext return datapath to current target.
+ *
+ * @param  {[type]} context [description]
+ * @param  {[type]} prop    [description]
+ * @return {[type]}         [description]
+ */
+function getContext(context, prop) {
+    return context ? context + '.' + prop : prop;
+}
 
 export default Model;
