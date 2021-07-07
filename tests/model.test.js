@@ -50,7 +50,7 @@ describe('Test basic get functionalty', () => {
     test('mixed syntax getting', () => {
         expect( testModel.get('stuff.nest[0].foo')).toBe('bar');
     });
-    test('on-existent fallback response', () => {
+    test('non-existent fallback response', () => {
         expect(testModel.get('stuff.info.6')).toBe(undefined);
     });
     test('custom fallback response', () => {
@@ -714,5 +714,18 @@ describe('Misc', () => {
 
         expect(result[0]).toBe('hello');
         expect(result[1]).toBe('world');
+    });
+
+    test('Array map', () => {
+        let count = 0; let val = 1;
+        const test = new Model({
+            'test': [1, 2, 3],
+        });
+
+        test.data.test.map((v)=> {
+            count++;
+            expect(v).toBe(val++);
+        });
+        expect(count).toBe(3);
     });
 });

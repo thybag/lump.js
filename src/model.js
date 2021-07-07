@@ -33,9 +33,10 @@ const Model = function(_data) {
 
         const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
         const result = (
-            keyArray.reduce((prevObj, key) => prevObj && prevObj[key], _real) || fallback
+            keyArray.reduce((prevObj, key) => prevObj && prevObj[key], _real)
         );
 
+        if (result === undefined) return fallback;
         return result;
     }
 
@@ -114,6 +115,7 @@ const Model = function(_data) {
             get(obj, prop, receiver) {
                 // Get real data from object
                 const result = Reflect.get(obj, prop);
+
                 // Return primitive or data wrapped in proxy
                 return parent.isObject(result) ? newDataProxy(result, getContext(context, prop)) : result;
             },
@@ -166,7 +168,13 @@ const Model = function(_data) {
                 return Object.keys(_get(context));
             },
             getOwnPropertyDescriptor() {
-                return {configurable: true, enumerable: true};
+                return {configurable: true, enumerable: true, value: '123'};
+            },
+            has(obj, prop) {
+                /* eslint-disable no-prototype-builtins */
+                // We don't know the type of the souce object
+                // so have to blindly pass this down
+                return _get(context).hasOwnProperty(prop);
             },
         };
 
