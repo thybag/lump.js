@@ -162,6 +162,12 @@ const Model = function(_data) {
                 // Set data to the context path
                 return parent.set(getContext(context, prop), value);
             },
+            ownKeys() {
+                return Object.keys(_get(context));
+            },
+            getOwnPropertyDescriptor() {
+                return {configurable: true, enumerable: true};
+            },
         };
 
         // Return access proxy

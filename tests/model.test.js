@@ -682,4 +682,37 @@ describe('Misc', () => {
         expect(JSON.stringify(test.data)).toBe(JSON.stringify(obj));
         expect(JSON.stringify(test.data.test)).toBe('[1,2]');
     });
+
+    test('Object keys', () => {
+        const obj = {
+            'hello': 'world',
+            'test': [1, 2],
+        };
+        const test = new Model(obj);
+
+        expect(Object.keys(test.data)[0]).toBe('hello');
+        expect(Object.keys(test.data)[1]).toBe('test');
+    });
+
+    test('Object values', () => {
+        const obj = {
+            'hello': 'world',
+            'test': [1, 2],
+        };
+        const test = new Model(obj);
+
+        expect(Object.values(test.data)[0]).toBe('world');
+    });
+
+    test('Object enteries', () => {
+        const obj = {
+            'hello': 'world',
+            'test': [1, 2],
+        };
+        const test = new Model(obj);
+        const result = Object.entries(test.data)[0];
+
+        expect(result[0]).toBe('hello');
+        expect(result[1]).toBe('world');
+    });
 });
