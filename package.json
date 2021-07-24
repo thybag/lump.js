@@ -1,6 +1,6 @@
 {
   "name": "lumpjs",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A simple component and reactive model library",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
@@ -22,10 +22,10 @@
   },
   "homepage": "https://github.com/thybag/lump.js#readme",
   "devDependencies": {
-    "jest": "^27.0.6",
     "eslint": "^7.20.0",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.22.1",
-    "eslint-plugin-node": "^11.1.0"
+    "eslint-plugin-node": "^11.1.0",
+    "jest": "^27.0.6"
   }
 }
