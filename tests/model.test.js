@@ -671,7 +671,7 @@ describe('Listeners', () => {
     });
 });
 
-describe('Misc', () => {
+describe('Native functionalty', () => {
     test('stringify', () => {
         const obj = {
             'hello': 'world',
@@ -727,5 +727,35 @@ describe('Misc', () => {
             expect(v).toBe(val++);
         });
         expect(count).toBe(3);
+    });
+});
+
+describe('Custom events', () => {
+    test('Trigger custom event', () => {
+        const testModel = makeTestModel();
+        let called = 0;
+        testModel.on('magic:helloworld', (d) => {
+            expect(d.id).toBe(123);
+            called++;
+        });
+
+        testModel.trigger('magic:helloworld', {id: 123});
+
+        expect(called).toBe(1);
+    });
+
+    test('Trigger custom event via defer', () => {
+        const testModel = makeTestModel();
+        const stuff = testModel.get('stuff');
+
+        let called = 0;
+        stuff.on('magic', (d) => {
+            expect(d.id).toBe(123);
+            called++;
+        });
+
+        stuff.trigger('magic', {id: 123});
+
+        expect(called).toBe(1);
     });
 });

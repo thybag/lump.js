@@ -153,6 +153,7 @@ const Model = function(_data) {
                 if (prop === 'get') return magicGet(parent, context);
                 if (prop === 'set') return magicSet(parent, context);
                 if (prop === 'on') return magicOn(parent, context);
+                if (prop === 'trigger') return magicTrigger(parent, context);
                 if (prop === 'getContext') return () => context;
                 // Support json stringify by pass access to the real object
                 if (prop === 'toJSON') return () => _get(context);
@@ -460,6 +461,23 @@ function magicOn(parent, context) {
             listener = `${parts[0]}:${context}.${parts[1]}`;
         }
         return parent.on(listener, callback);
+    };
+}
+
+/**
+ * Proxy access for `on`
+ * @param  {[type]} parent  [description]
+ * @param  {[type]} context [description]
+ * @return {[type]}         [description]
+ */
+function magicTrigger(parent, context) {
+    return function(event, data) {
+        let listener = `${event}:${context}`;
+        if (event.includes(':')) {
+            const parts = event.split(':');
+            listener = `${parts[0]}:${context}.${parts[1]}`;
+        }
+        return parent.trigger(listener, data);
     };
 }
 
