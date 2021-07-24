@@ -10,4 +10,4 @@ jobs:
       - uses: actions/checkout@v2
       - run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+          NPM_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
