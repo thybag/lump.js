@@ -421,7 +421,7 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
         this.trigger('change:'+wildcardNamespace, returnType, updated, original);
     }
 
-    this.trigger('change', returnType, namespace, updated, original);
+    this.trigger('all', returnType, namespace, updated, original);
 
     return returnType;
 };
