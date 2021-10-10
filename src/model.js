@@ -146,7 +146,7 @@ const Model = function(_data) {
      * @param  {string} context datapath to current object
      * @return {Proxy}          Object wrapped in Proxy
      */
-    function newAccessProxy(context) {
+    function newAccessProxy(context = '') {
         const proxyTraps = {
             get(obj, prop, receiver) {
                 // Handle magic methods for object
@@ -157,6 +157,11 @@ const Model = function(_data) {
                 if (prop === 'getContext') return () => context;
                 // Support json stringify by pass access to the real object
                 if (prop === 'toJSON') return () => _get(context);
+
+                // Can this object be iterated?
+                if (prop === Symbol.iterator) {
+                    return _get(`${context}`)[Symbol.iterator];
+                }
 
                 // else just get as normal
                 return parent.get(getContext(context, prop));
@@ -207,6 +212,15 @@ const Model = function(_data) {
     this.data = this.get();
 };
 
+/**
+ * Static model maker.
+ * 
+ * @param  {[type]} data [description]
+ * @return {[type]}      [description]
+ */
+Model.make = function(data) {
+    return (new Model(data)).data;
+};
 
 /**
  * Trigger event on model
@@ -229,8 +243,8 @@ Model.prototype.trigger = function(event, ...args) {
     for (const [subscriber, ns] of this._subscribers) {
         // Optionally namespace listener.
         // e.g. players:update:name
-        const namespace = ns ? ns+':' : '';
-        subscriber.trigger(namespace+event, ...args);
+        const namespace = ns ? ns + ':' : '';
+        subscriber.trigger(namespace + event, ...args);
     }
 };
 
@@ -241,6 +255,10 @@ Model.prototype.trigger = function(event, ...args) {
  * @return {[type]}        [description]
  */
 Model.prototype.on = function(key, method) {
+    if (typeof method !== 'function') {
+        throw new Error("Invalid listener callback provided.");
+    }
+
     (this._events[key] = this._events[key] || []).push([key, method]);
     return this;
 };
@@ -254,7 +272,7 @@ Model.prototype.on = function(key, method) {
 Model.prototype.off = function(key, method) {
     if (!this._events[key]) return this;
 
-    // Delete all listners if no method
+    // Delete all listeners if no method
     if (!method) {
         delete this._events[key];
         return this;
@@ -452,7 +470,7 @@ function magicSet(parent, context) {
  */
 function magicOn(parent, context) {
     return function(event, callback) {
-        let listener = `${event}:${context}`;
+        let listener = context ? `${event}:${context}` : event;
         // Event may either be purely the event type (change,update)
         // or type + sub key change:subAttr. In case of sub attr
         // we want to insert context between the event and the path
@@ -472,7 +490,7 @@ function magicOn(parent, context) {
  */
 function magicTrigger(parent, context) {
     return function(event, data) {
-        let listener = `${event}:${context}`;
+        let listener = context ? `${event}:${context}` : event;
         if (event.includes(':')) {
             const parts = event.split(':');
             listener = `${parts[0]}:${context}.${parts[1]}`;

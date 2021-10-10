@@ -13,10 +13,13 @@ Lump is currency composed of two key elements.
 
 ## Usage
 
-Install using NPM direct from Github.
+Install using NPM or Yarn
 
 ```
- npm install git://git@github.com:thybag/lump.js.git
+npm i lumpjs
+```
+```
+yarn add lumpjs
 ```
 
 Then import either Component or Model where you want them.

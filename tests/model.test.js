@@ -759,3 +759,47 @@ describe('Custom events', () => {
         expect(called).toBe(1);
     });
 });
+
+describe('Functions', () => {
+    test('Can store functions', () => {
+        const model =  new Model({'name':'bob'});
+
+        model.set('abc', function(){ return "yarr"; })     
+        model.set('echo', function(v){ return v; })  
+
+        expect(model.get('abc')()).toBe('yarr');
+        expect(model.get('echo')('test')).toBe('test');
+        expect(model.data.abc()).toBe('yarr');
+        expect(model.data.echo('test')).toBe('test');
+    });
+
+    test('Can change function', () => {
+        const model =  new Model({'name': 'bob'});
+        const method = function(v){ return v; };
+
+        const types = [
+            'CREATE',
+            // No event on no change.
+            'UPDATE'
+        ];
+
+        model.on('change:echo', (type, n, o) => {
+            expect(type).toBe(types.shift());
+        });
+
+        model.set('echo', method);
+        model.set('echo', method);
+        model.set('echo', function(v){ return v; });
+    });
+});
+
+describe('Static Methods', () => {
+    test('Static model', () => {
+        const model = Model.make({'name':'bob'});
+
+        expect(model.name).toBe('bob');
+        expect(model['name']).toBe('bob');
+        expect(model.get('name')).toBe('bob');
+    });
+
+});
