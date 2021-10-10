@@ -1,12 +1,12 @@
 /* global expect, test, describe, beforeEach */
-import Model from '../src/model.js';
+import newModel from '../src/model.js';
 
 /**
  * Setup test model
  * @return {[type]} [description]
  */
-function makeTestModel() {
-    return Model(
+function makeTestnewModel() {
+    return newModel(
         {
             'stuff': {
                 'northwind': 'costa',
@@ -20,7 +20,7 @@ function makeTestModel() {
 }
 
 describe('Test basic get functionalty', () => {
-    const testModel = makeTestModel();
+    const testModel = makeTestnewModel();
 
     test('data object exists', () => {
         expect(typeof testModel).toBe('object');
@@ -32,8 +32,6 @@ describe('Test basic get functionalty', () => {
         expect(testModel.stuff.info[1]).toBe(2);
     });
     test('Get root data', () => {
-
-        console.log(testModel.get());
         expect(testModel.get().name).toBe('dave');
         expect(testModel.get('').name).toBe('dave');
     });
@@ -68,7 +66,7 @@ describe('Test basic get functionalty', () => {
 });
 
 describe('Test basic set functionalty', () => {
-    const testModel = makeTestModel();
+    const testModel = makeTestnewModel();
 
     test('Basic set', () => {
         testModel.set('name', 'bert');
@@ -117,7 +115,7 @@ describe('Test read events', () => {
     let testModel;
 
     beforeEach(() => {
-        testModel = makeTestModel();
+        testModel = makeTestnewModel();
     });
 
     test('Read via get', () => {
@@ -132,10 +130,11 @@ describe('Test read events', () => {
         });
         testModel.name;
     });
+
     // Deep data read will travel up the chain of values till the relevent one.
     // This means a read listener on stuff will trigger as well as the one on stuff.info
     test('Read deep data', () => {
-        const calls = ['stuff.info', 'stuff'];
+        const calls = ['stuff', 'stuff.info'];
         testModel.on('read', (data) => {
             expect(data).toBe(calls.pop());
         });
@@ -159,7 +158,7 @@ describe('Test read events', () => {
 
         testModel.off('read');
         // Should remove all read listerns
-        expect(!testModel._events['read']).toBe(true);
+        expect(!testModel.getEvents('read')).toBe(true);
     });
 });
 
@@ -167,7 +166,7 @@ describe('Simple change detection', () => {
     let testModel;
 
     beforeEach(() => {
-        testModel = makeTestModel();
+        testModel = makeTestnewModel();
     });
 
     test('Listen to value created by set', () => {
@@ -246,15 +245,20 @@ describe('Simple change detection', () => {
     });
 
     test('Listen to value remove', () => {
+        let count = 0;
+
         testModel.on('all', (type, namespace, updated, original) => {
-            console.log(type, namespace, updated, original);
-            expect(type).toBe('DELETE');
+            count++;
+            expect(type).toBe('REMOVE');
             expect(namespace).toBe('name');
-            expect(updated).toBe(false);
+            expect(updated).toBe(undefined);
             expect(original).toBe('dave');
         });
 
         delete testModel.name;
+        expect(testModel.name).toBe(undefined);
+
+        expect(count).toBe(1);
     });
 
     test('Listen to object update', () => {
@@ -438,21 +442,21 @@ describe('Context events', () => {
     let testModel;
 
     beforeEach(() => {
-        testModel = makeTestModel();
+        testModel = makeTestnewModel();
     });
 
     test('Context event simple', () => {
         const stuff = testModel.get('stuff');
 
         stuff.on('all', () => {});
-        expect(Object.keys(testModel._events)[0]).toBe('change:stuff');
+        expect(Object.keys(testModel.getEvents())[0]).toBe('all:stuff');
     });
 
     test('Context event, sub object', () => {
         const stuff = testModel.get('stuff');
 
         stuff.on('change:name', () => {});
-        expect(Object.keys(testModel._events)[0]).toBe('change:stuff.name');
+        expect(Object.keys(testModel.getEvents())[0]).toBe('change:stuff.name');
     });
 
 
@@ -573,7 +577,7 @@ describe('Listeners', () => {
     let testModel;
 
     beforeEach(() => {
-        testModel = makeTestModel();
+        testModel = makeTestnewModel();
     });
 
     test('Add listener', () => {
@@ -678,7 +682,7 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = Model(obj);
+        const test = newModel(obj);
 
         expect(JSON.stringify(test)).toBe(JSON.stringify(obj));
         expect(JSON.stringify(test.test)).toBe('[1,2]');
@@ -689,7 +693,7 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = Model(obj);
+        const test = newModel(obj);
 
         expect(Object.keys(test)[0]).toBe('hello');
         expect(Object.keys(test)[1]).toBe('test');
@@ -700,7 +704,7 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = Model(obj);
+        const test = newModel(obj);
 
         expect(Object.values(test)[0]).toBe('world');
     });
@@ -710,7 +714,7 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = Model(obj);
+        const test = newModel(obj);
         const result = Object.entries(test)[0];
 
         expect(result[0]).toBe('hello');
@@ -719,7 +723,7 @@ describe('Native functionalty', () => {
 
     test('Array map', () => {
         let count = 0; let val = 1;
-        const test = Model({
+        const test = newModel({
             'test': [1, 2, 3],
         });
 
@@ -731,8 +735,7 @@ describe('Native functionalty', () => {
     });
 
     test('Spread', () => {
-        let count = 0; let val = 1;
-        const test = Model({
+        const test = newModel({
             'test': [1, 2, 3],
         });
 
@@ -745,7 +748,7 @@ describe('Native functionalty', () => {
 
 describe('Custom events', () => {
     test('Trigger custom event', () => {
-        const testModel = makeTestModel();
+        const testModel = makeTestnewModel();
         let called = 0;
         testModel.on('magic:helloworld', (d) => {
             expect(d.id).toBe(123);
@@ -758,7 +761,7 @@ describe('Custom events', () => {
     });
 
     test('Trigger custom event via defer', () => {
-        const testModel = makeTestModel();
+        const testModel = makeTestnewModel();
         const stuff = testModel.get('stuff');
 
         let called = 0;
@@ -775,10 +778,14 @@ describe('Custom events', () => {
 
 describe('Functions', () => {
     test('Can store functions', () => {
-        const model =  Model({'name':'bob'});
+        const model = newModel({'name': 'bob'});
 
-        model.set('abc', function(){ return "yarr"; })     
-        model.set('echo', function(v){ return v; })  
+        model.set('abc', function() {
+            return 'yarr';
+        });
+        model.set('echo', function(v) {
+            return v;
+        });
 
         expect(model.get('abc')()).toBe('yarr');
         expect(model.get('echo')('test')).toBe('test');
@@ -787,13 +794,15 @@ describe('Functions', () => {
     });
 
     test('Can change function', () => {
-        const model =  Model({'name': 'bob'});
-        const method = function(v){ return v; };
+        const model = newModel({'name': 'bob'});
+        const method = function(v) {
+            return v;
+        };
 
         const types = [
             'CREATE',
             // No event on no change.
-            'UPDATE'
+            'UPDATE',
         ];
 
         model.on('change:echo', (type, n, o) => {
@@ -802,6 +811,8 @@ describe('Functions', () => {
 
         model.set('echo', method);
         model.set('echo', method);
-        model.set('echo', function(v){ return v; });
+        model.set('echo', function(v) {
+            return v;
+        });
     });
 });
