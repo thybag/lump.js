@@ -8,7 +8,7 @@ This library is entirely stand alone and has no dependencies. Only modern browse
 Lump is currency composed of two key elements.
 
  - **Components** - Defines logic for managing a selected area of the DOM. Heavily inspired by some of my favorite backbone.js features/approaches in terms of deferred event listeners and none perspective approach. 
- - **Models** - A wrapper for arbitrary data, implementing a reactive layer using proxies. Interaction with the model is done primarly by registering event listens, that will trigger whenever a change is detected on its data path. The key change types are `create` `update`,`remove`. Changes from subobjects will automatically bubble to their parents.
+ - **Models** - A wrapper for arbitrary data, implementing a reactive layer using proxies. Interaction with the model is done primarily by registering event listens, that will trigger whenever a change is detected on its data path. The key change types are `create` `update`,`remove`. Changes from subobjects will automatically bubble to their parents.
 
 
 ## Usage
@@ -61,9 +61,11 @@ Component.make({
 ```
 
 ## Model
-Basic model component that will keep track of the contents of it's data using proxies. Events are fired for any changes and can be listened to via the on method.
+Create reactive models for arbitrary data. Changes are managed via delegated data paths ensuring information can never become orphaned or out of sync.
 
-Model events use a deferred listener approach, where by the manager will fire events for any object within your provided namespace, allowing for easy detection of complete object replacement. 
+Data is managed by an underlying tracker proxy, and exposed via an accessor proxy to allow you to interact with the model as if its a normal JavaScript.
+
+You can detect changes by registering listeners against given data paths. Changes to sub-objects will bubble back up the parent.
 
 **Key data events.**
 
@@ -72,7 +74,7 @@ Model events use a deferred listener approach, where by the manager will fire ev
 * `on('remove:{datapath}', (previousValue) => {})` - Data at datapath no longer exists
 * `on('unchanged:{datapath}', (previousValue) => {})` - datapath was updated to an identical value
 * `on('change:{datapath}', (changeType, newValue, oldValue) => {})` - Change of any type to datapath
-* `on('change', (changeType, datapath, newValue, oldValue) => {})`- Change to any data
+* `on('all', (changeType, datapath, newValue, oldValue) => {})`- Change to any data
 
 **Datapath** is a dot notation representation of the path to the data you want to watch.
 e.g. `title`, `company.name`, `company.employees.0.name` or `company.employees[0].name`
@@ -80,7 +82,7 @@ e.g. `title`, `company.name`, `company.employees.0.name` or `company.employees[0
 Each object in the Model supports the magic methods `on`, `get` and `set`. Adding a `on('update')` to one of these will register a model listener for the objects current datapath.
 
 ```js
-let model = new Model({'test': {'hello': 'world'},'info': 'test box'});
+let model = Model({'test': {'hello': 'world'},'info': 'test box'});
 
 // Add listeners
 model.on('create:test.goodbye', function(prop, value){
@@ -97,21 +99,23 @@ model.on('read', function(prop){
 });
 
 // Add listeners directly to sub objects
-let test = model.data.test;
+let test = model.test;
+
 test.on('update', () => {console.log("I've been changed");} )
 
 // Change via getter/setter or directly
-model.set('test.goodbye', 'value');
-model.data.test.hello = 'new value';
+model.test.goodbye = 'value');
+model.test.hello = 'new value';
 
 // of full object replacement 
-model.set('test', {'newObject': 'hi'});
+model.test = {'newObject': 'hi', 'hello': 'you'};
+
+console.log(test.hello); // will return you
  ```
-Change to `model.data.info = 'abc'` will trigger `changed info abc `
-Change to `model.data.test.hello = 'me'` will trigger `changed test.hello me`
+Change to `model.info = 'abc'` will trigger `changed info abc`
+Change to `model.test.hello = 'me'` will trigger `changed test.hello me`
 
 ### Planned features
 
- * Upgrading `Component` to include an inbuilt models on `data`, for easier re-rendering/change detection.
  * Templates helper library to abstract basic markup templates away.
 
