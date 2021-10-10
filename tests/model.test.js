@@ -6,7 +6,7 @@ import Model from '../src/model.js';
  * @return {[type]} [description]
  */
 function makeTestModel() {
-    return new Model(
+    return Model(
         {
             'stuff': {
                 'northwind': 'costa',
@@ -23,15 +23,17 @@ describe('Test basic get functionalty', () => {
     const testModel = makeTestModel();
 
     test('data object exists', () => {
-        expect(typeof testModel.data).toBe('object');
+        expect(typeof testModel).toBe('object');
     });
     test('data object is populated', () => {
-        expect(testModel.data.name).toBe('dave');
+        expect(testModel.name).toBe('dave');
     });
     test('data object array is populated', () => {
-        expect(testModel.data.stuff.info[1]).toBe(2);
+        expect(testModel.stuff.info[1]).toBe(2);
     });
     test('Get root data', () => {
+
+        console.log(testModel.get());
         expect(testModel.get().name).toBe('dave');
         expect(testModel.get('').name).toBe('dave');
     });
@@ -57,7 +59,7 @@ describe('Test basic get functionalty', () => {
         expect(testModel.get('stuff.info.6', 'hello')).toBe('hello');
     });
     test('Get allows access to values with protected names', () => {
-        testModel.data.get = 'test';
+        testModel.get = 'test';
         expect(testModel.get('get')).toBe('test');
     });
     test('Get something that doesnt exist', () => {
@@ -71,12 +73,12 @@ describe('Test basic set functionalty', () => {
     test('Basic set', () => {
         testModel.set('name', 'bert');
         expect(testModel.get('name')).toBe('bert');
-        expect(testModel.data.name).toBe('bert');
+        expect(testModel.name).toBe('bert');
     });
 
     test('Nested set', () => {
         testModel.set('stuff.northwind', 'example');
-        expect(testModel.data.stuff.northwind).toBe('example');
+        expect(testModel.stuff.northwind).toBe('example');
         expect(testModel.get('stuff.northwind')).toBe('example');
     });
 
@@ -87,26 +89,26 @@ describe('Test basic set functionalty', () => {
 
     test('Set arrays', () => {
         testModel.set('new.object.arr', [1]);
-        expect(testModel.data.new.object.arr[0]).toBe(1);
+        expect(testModel.new.object.arr[0]).toBe(1);
         expect(testModel.get('new.object.arr[0]')).toBe(1);
     });
 
     test('Set numerical property', () => {
         testModel.set('new.object.arr2.0', 'hi');
-        expect(testModel.data.new.object.arr2[0]).toBe('hi');
+        expect(testModel.new.object.arr2[0]).toBe('hi');
         expect(testModel.get('new.object.arr2.0')).toBe('hi');
     });
 
     test('Set numerical property with array syntax', () => {
         testModel.set('new.object.arr3[0]', 'hey');
-        expect(testModel.data.new.object.arr3[0]).toBe('hey');
+        expect(testModel.new.object.arr3[0]).toBe('hey');
         expect(testModel.get('new.object.arr3.0')).toBe('hey');
     });
 
     test('Set as array of attrs', () => {
         testModel.set(['new', 'object', 'arr2', '0'], 'yo');
 
-        expect(testModel.data.new.object.arr2[0]).toBe('yo');
+        expect(testModel.new.object.arr2[0]).toBe('yo');
         expect(testModel.get(['new', 'object', 'arr2', '0'])).toBe('yo');
     });
 });
@@ -128,7 +130,7 @@ describe('Test read events', () => {
         testModel.on('read', (data) => {
             expect(data).toBe('name');
         });
-        testModel.data.name;
+        testModel.name;
     });
     // Deep data read will travel up the chain of values till the relevent one.
     // This means a read listener on stuff will trigger as well as the one on stuff.info
@@ -150,10 +152,10 @@ describe('Test read events', () => {
 
         testModel.on('read', f1);
         testModel.on('read', f2);
-        expect(testModel._events['read'].length).toBe(2);
+        expect(testModel.getEvents('read').length).toBe(2);
 
         testModel.off('read', f1);
-        expect(testModel._events['read'].length).toBe(1);
+        expect(testModel.getEvents('read').length).toBe(1);
 
         testModel.off('read');
         // Should remove all read listerns
@@ -185,7 +187,7 @@ describe('Simple change detection', () => {
             expect(updated).toBe(0);
         });
 
-        testModel.data.count = 0;
+        testModel.count = 0;
     });
 
     test('Listen to value update', () => {
@@ -252,7 +254,7 @@ describe('Simple change detection', () => {
             expect(original).toBe('dave');
         });
 
-        delete testModel.data.name;
+        delete testModel.name;
     });
 
     test('Listen to object update', () => {
@@ -442,7 +444,7 @@ describe('Context events', () => {
     test('Context event simple', () => {
         const stuff = testModel.get('stuff');
 
-        stuff.on('change', () => {});
+        stuff.on('all', () => {});
         expect(Object.keys(testModel._events)[0]).toBe('change:stuff');
     });
 
@@ -457,7 +459,7 @@ describe('Context events', () => {
     test('Add event listener directly to sub object', () => {
         const stuff = testModel.get('stuff');
 
-        stuff.on('change', (type, updated, original) => {
+        stuff.on('all', (type, updated, original) => {
             expect(type).toBe('UPDATE');
         });
 
@@ -475,7 +477,7 @@ describe('Context events', () => {
         testModel.set('test.testing', {'name': 'bobbert'});
         const testing = testModel.get('test.testing');
 
-        testing.on('change', (type, updated, original) => {
+        testing.on('all', (type, updated, original) => {
             expect(type).toBe('REMOVE');
         });
 
@@ -486,7 +488,7 @@ describe('Context events', () => {
         testModel.set('test.testing', {'name': 'bobbert'});
         const testing = testModel.get('test.testing');
 
-        testing.on('change', (type, updated, original) => {
+        testing.on('all', (type, updated, original) => {
             expect(type).toBe('UPDATE');
             expect(updated.name).toBe('Jane');
             expect(original.name).toBe('bobbert');
@@ -676,10 +678,10 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = new Model(obj);
+        const test = Model(obj);
 
-        expect(JSON.stringify(test.data)).toBe(JSON.stringify(obj));
-        expect(JSON.stringify(test.data.test)).toBe('[1,2]');
+        expect(JSON.stringify(test)).toBe(JSON.stringify(obj));
+        expect(JSON.stringify(test.test)).toBe('[1,2]');
     });
 
     test('Object keys', () => {
@@ -687,10 +689,10 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = new Model(obj);
+        const test = Model(obj);
 
-        expect(Object.keys(test.data)[0]).toBe('hello');
-        expect(Object.keys(test.data)[1]).toBe('test');
+        expect(Object.keys(test)[0]).toBe('hello');
+        expect(Object.keys(test)[1]).toBe('test');
     });
 
     test('Object values', () => {
@@ -698,9 +700,9 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = new Model(obj);
+        const test = Model(obj);
 
-        expect(Object.values(test.data)[0]).toBe('world');
+        expect(Object.values(test)[0]).toBe('world');
     });
 
     test('Object enteries', () => {
@@ -708,8 +710,8 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = new Model(obj);
-        const result = Object.entries(test.data)[0];
+        const test = Model(obj);
+        const result = Object.entries(test)[0];
 
         expect(result[0]).toBe('hello');
         expect(result[1]).toBe('world');
@@ -717,15 +719,27 @@ describe('Native functionalty', () => {
 
     test('Array map', () => {
         let count = 0; let val = 1;
-        const test = new Model({
+        const test = Model({
             'test': [1, 2, 3],
         });
 
-        test.data.test.map((v)=> {
+        test.test.map((v)=> {
             count++;
             expect(v).toBe(val++);
         });
         expect(count).toBe(3);
+    });
+
+    test('Spread', () => {
+        let count = 0; let val = 1;
+        const test = Model({
+            'test': [1, 2, 3],
+        });
+
+        const flat = [...test.test];
+        expect(flat[0]).toBe(1);
+        expect(flat[1]).toBe(2);
+        expect(flat[2]).toBe(3);
     });
 });
 
@@ -761,19 +775,19 @@ describe('Custom events', () => {
 
 describe('Functions', () => {
     test('Can store functions', () => {
-        const model =  new Model({'name':'bob'});
+        const model =  Model({'name':'bob'});
 
         model.set('abc', function(){ return "yarr"; })     
         model.set('echo', function(v){ return v; })  
 
         expect(model.get('abc')()).toBe('yarr');
         expect(model.get('echo')('test')).toBe('test');
-        expect(model.data.abc()).toBe('yarr');
-        expect(model.data.echo('test')).toBe('test');
+        expect(model.abc()).toBe('yarr');
+        expect(model.echo('test')).toBe('test');
     });
 
     test('Can change function', () => {
-        const model =  new Model({'name': 'bob'});
+        const model =  Model({'name': 'bob'});
         const method = function(v){ return v; };
 
         const types = [
@@ -790,15 +804,4 @@ describe('Functions', () => {
         model.set('echo', method);
         model.set('echo', function(v){ return v; });
     });
-});
-
-describe('Static Methods', () => {
-    test('Static model', () => {
-        const model = Model.make({'name':'bob'});
-
-        expect(model.name).toBe('bob');
-        expect(model['name']).toBe('bob');
-        expect(model.get('name')).toBe('bob');
-    });
-
 });

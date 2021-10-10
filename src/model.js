@@ -32,6 +32,7 @@ const Model = function(_data) {
         if (!key) return _real;
 
         const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
+
         const result = (
             keyArray.reduce((prevObj, key) => prevObj && prevObj[key], _real)
         );
@@ -154,6 +155,7 @@ const Model = function(_data) {
                 if (prop === 'set') return magicSet(parent, context);
                 if (prop === 'on') return magicOn(parent, context);
                 if (prop === 'trigger') return magicTrigger(parent, context);
+                if (prop === 'getEvents') return magicEvents(parent, context);
                 if (prop === 'getContext') return () => context;
                 // Support json stringify by pass access to the real object
                 if (prop === 'toJSON') return () => _get(context);
@@ -163,7 +165,7 @@ const Model = function(_data) {
                     return _get(`${context}`)[Symbol.iterator];
                 }
 
-                // else just get as normal
+                // else treat this as an actual read event
                 return parent.get(getContext(context, prop));
             },
             set(obj, prop, value) {
@@ -195,8 +197,13 @@ const Model = function(_data) {
      * @param  {[type]} fallback [description]
      * @return {primitive|accessProxy}          [description]
      */
-    this.get = (key, fallback) => {
+    this.get = (key = '', fallback = undefined) => {
         const result = _get(key, fallback);
+        
+        // Read events
+        parent.trigger('read' + (key ? `:${key}` : ''));
+        parent.trigger('read', key);
+
         return (parent.isObject(result)) ? newAccessProxy(key) : result;
     };
 
@@ -210,16 +217,6 @@ const Model = function(_data) {
 
     // get data
     this.data = this.get();
-};
-
-/**
- * Static model maker.
- * 
- * @param  {[type]} data [description]
- * @return {[type]}      [description]
- */
-Model.make = function(data) {
-    return (new Model(data)).data;
 };
 
 /**
@@ -247,6 +244,15 @@ Model.prototype.trigger = function(event, ...args) {
         subscriber.trigger(namespace + event, ...args);
     }
 };
+
+/**
+ * 
+ */
+Model.prototype.getEvents = function(key) {
+    return this._events[key];
+};
+
+
 
 /**
  * Listen for event on model
@@ -445,8 +451,8 @@ Model.prototype.commitChanges = function(keys, original, updated) {
  * @return {[type]}         [description]
  */
 function magicGet(parent, context) {
-    return function(key) {
-        return parent.get(`${context}.${key}`);
+    return function(key, fallback) {
+        return parent.get(getContext(context, key), fallback);
     };
 }
 
@@ -458,7 +464,19 @@ function magicGet(parent, context) {
  */
 function magicSet(parent, context) {
     return function(key, value) {
-        return parent.set(`${context}.${key}`, value);
+        return parent.set(getContext(context, key), value);
+    };
+}
+
+/**
+ * Proxy access for `set`
+ * @param  {[type]} parent  [description]
+ * @param  {[type]} context [description]
+ * @return {[type]}         [description]
+ */
+function magicEvents(parent, context) {
+    return function(key) {
+        return parent.getEvents(getContext(context, key));
     };
 }
 
@@ -507,7 +525,8 @@ function magicTrigger(parent, context) {
  * @return {[type]}         [description]
  */
 function getContext(context, prop) {
-    return context ? context + '.' + prop : prop;
+    let key = Array.isArray(prop) ? prop.join('.') : prop;
+    return context ? context + '.' + key : key;
 }
 
-export default Model;
+export default function(data) { return (new Model(data)).data; };
