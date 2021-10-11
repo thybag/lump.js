@@ -32,6 +32,7 @@ const Model = function(_data) {
         if (!key) return _real;
 
         const keyArray = Array.isArray(key) ? key : key.match(jsPathRegex);
+
         const result = (
             keyArray.reduce((prevObj, key) => prevObj && prevObj[key], _real)
         );
@@ -122,9 +123,15 @@ const Model = function(_data) {
             set(obj, prop, value) {
                 // Update local object
                 const success = Reflect.set(obj, prop, value);
+
                 // Trigger change detection and sync to original
                 applyChanges(getContext(context, prop));
 
+                return success;
+            },
+            deleteProperty(obj, prop) {
+                const success = Reflect.deleteProperty(obj, prop);
+                applyChanges(getContext(context, prop));
                 return success;
             },
         };
@@ -146,19 +153,33 @@ const Model = function(_data) {
      * @param  {string} context datapath to current object
      * @return {Proxy}          Object wrapped in Proxy
      */
-    function newAccessProxy(context) {
+    function newAccessProxy(context = '') {
         const proxyTraps = {
             get(obj, prop, receiver) {
                 // Handle magic methods for object
-                if (prop === 'get') return magicGet(parent, context);
-                if (prop === 'set') return magicSet(parent, context);
-                if (prop === 'on') return magicOn(parent, context);
-                if (prop === 'trigger') return magicTrigger(parent, context);
+                if (prop === 'get') return delegatedGet(parent, context);
+                if (prop === 'set') return delegatedSet(parent, context);
+                if (prop === 'on') return delegatedOn(parent, context);
+                if (prop === 'off') return delegatedOff(parent, context);
+                if (prop === 'trigger') return delegatedTrigger(parent, context);
+                if (prop === 'getEvents') return delegatedEvents(parent, context);
                 if (prop === 'getContext') return () => context;
+
+                // Subscriptions currently only available on root model.
+                if (context === '') {
+                    if (prop === 'subscribe') return delegatedSubscribe(parent, context);
+                    if (prop === 'unsubscribe') return delegatedUnsubscribe(parent, context);
+                }
+
                 // Support json stringify by pass access to the real object
                 if (prop === 'toJSON') return () => _get(context);
 
-                // else just get as normal
+                // Can this object be iterated?
+                if (prop === Symbol.iterator) {
+                    return _get(`${context}`)[Symbol.iterator];
+                }
+
+                // else treat this as an actual read event
                 return parent.get(getContext(context, prop));
             },
             set(obj, prop, value) {
@@ -177,6 +198,10 @@ const Model = function(_data) {
                 // so have to blindly pass this down
                 return _get(context).hasOwnProperty(prop);
             },
+            deleteProperty(target, prop) {
+                target = _get(context);
+                return Reflect.deleteProperty(target, prop);
+            },
         };
 
         // Return access proxy
@@ -190,8 +215,13 @@ const Model = function(_data) {
      * @param  {[type]} fallback [description]
      * @return {primitive|accessProxy}          [description]
      */
-    this.get = (key, fallback) => {
+    this.get = (key = '', fallback = undefined) => {
         const result = _get(key, fallback);
+
+        // Read events
+        parent.trigger('read' + (key ? `:${key}` : ''));
+        parent.trigger('read', key);
+
         return (parent.isObject(result)) ? newAccessProxy(key) : result;
     };
 
@@ -206,7 +236,6 @@ const Model = function(_data) {
     // get data
     this.data = this.get();
 };
-
 
 /**
  * Trigger event on model
@@ -229,9 +258,19 @@ Model.prototype.trigger = function(event, ...args) {
     for (const [subscriber, ns] of this._subscribers) {
         // Optionally namespace listener.
         // e.g. players:update:name
-        const namespace = ns ? ns+':' : '';
-        subscriber.trigger(namespace+event, ...args);
+        const namespace = ns ? ns + ':' : '';
+        subscriber.trigger(namespace + event, ...args);
     }
+};
+
+/**
+ * getEvents
+ *
+ * @param  {string} event [description]
+ * @return {[type]}     [description]
+ */
+Model.prototype.getEvents = function(event) {
+    return event ? this._events[event] : this._events;
 };
 
 /**
@@ -241,6 +280,10 @@ Model.prototype.trigger = function(event, ...args) {
  * @return {[type]}        [description]
  */
 Model.prototype.on = function(key, method) {
+    if (typeof method !== 'function') {
+        throw new Error('Invalid listener callback provided.');
+    }
+
     (this._events[key] = this._events[key] || []).push([key, method]);
     return this;
 };
@@ -254,7 +297,7 @@ Model.prototype.on = function(key, method) {
 Model.prototype.off = function(key, method) {
     if (!this._events[key]) return this;
 
-    // Delete all listners if no method
+    // Delete all listeners if no method
     if (!method) {
         delete this._events[key];
         return this;
@@ -403,7 +446,7 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
         this.trigger('change:'+wildcardNamespace, returnType, updated, original);
     }
 
-    this.trigger('change', returnType, namespace, updated, original);
+    this.trigger('all', returnType, namespace, updated, original);
 
     return returnType;
 };
@@ -426,9 +469,9 @@ Model.prototype.commitChanges = function(keys, original, updated) {
  * @param  {[type]} context [description]
  * @return {[type]}         [description]
  */
-function magicGet(parent, context) {
-    return function(key) {
-        return parent.get(`${context}.${key}`);
+function delegatedGet(parent, context) {
+    return function(key, fallback) {
+        return parent.get(getContext(context, key), fallback);
     };
 }
 
@@ -438,9 +481,21 @@ function magicGet(parent, context) {
  * @param  {[type]} context [description]
  * @return {[type]}         [description]
  */
-function magicSet(parent, context) {
+function delegatedSet(parent, context) {
     return function(key, value) {
-        return parent.set(`${context}.${key}`, value);
+        return parent.set(getContext(context, key), value);
+    };
+}
+
+/**
+ * Proxy access for `set`
+ * @param  {[type]} parent  [description]
+ * @param  {[type]} context [description]
+ * @return {[type]}         [description]
+ */
+function delegatedEvents(parent, context) {
+    return function(key) {
+        return parent.getEvents(getContext(context, key));
     };
 }
 
@@ -450,17 +505,49 @@ function magicSet(parent, context) {
  * @param  {[type]} context [description]
  * @return {[type]}         [description]
  */
-function magicOn(parent, context) {
+function delegatedOn(parent, context) {
     return function(event, callback) {
-        let listener = `${event}:${context}`;
-        // Event may either be purely the event type (change,update)
-        // or type + sub key change:subAttr. In case of sub attr
-        // we want to insert context between the event and the path
-        if (event.includes(':')) {
-            const parts = event.split(':');
-            listener = `${parts[0]}:${context}.${parts[1]}`;
-        }
-        return parent.on(listener, callback);
+        parent.on(getEventContext(context, event), callback);
+        return this;
+    };
+}
+
+/**
+ * Proxy access for `off`
+ * @param  {[type]} parent  [description]
+ * @param  {[type]} context [description]
+ * @return {[type]}         [description]
+ */
+function delegatedOff(parent, context) {
+    return function(event, callback) {
+        parent.off(getEventContext(context, event), callback);
+        return this;
+    };
+}
+
+/**
+ * Proxy access for `subscribe`
+ * @param  {[type]} parent  [description]
+ * @param  {[type]} context [description]
+ * @return {[type]}         [description]
+ */
+function delegatedSubscribe(parent, context) {
+    return function(subscriber, namespace) {
+        parent.subscribe(subscriber, namespace);
+        return this;
+    };
+}
+
+/**
+ * Proxy access for `unsubscribe`
+ * @param  {[type]} parent  [description]
+ * @param  {[type]} context [description]
+ * @return {[type]}         [description]
+ */
+function delegatedUnsubscribe(parent, context) {
+    return function(subscriber, namespace) {
+        parent.unsubscribe(subscriber, namespace);
+        return this;
     };
 }
 
@@ -470,26 +557,51 @@ function magicOn(parent, context) {
  * @param  {[type]} context [description]
  * @return {[type]}         [description]
  */
-function magicTrigger(parent, context) {
+function delegatedTrigger(parent, context) {
     return function(event, data) {
-        let listener = `${event}:${context}`;
-        if (event.includes(':')) {
-            const parts = event.split(':');
-            listener = `${parts[0]}:${context}.${parts[1]}`;
-        }
-        return parent.trigger(listener, data);
+        parent.trigger(getEventContext(context, event), data);
+        return this;
     };
 }
 
 /**
- * getContext return datapath to current target.
+ * getEventContext - return event:datapath
+ *
+ * @param  {[type]} context [description]
+ * @param  {[type]} event   [description]
+ * @return {[type]}         [description]
+ */
+function getEventContext(context, event) {
+    let ctx = context ? `${event}:${context}` : event;
+    // Event may either be purely the event type (change,update)
+    // or type + sub key change:subAttr. In case of sub attr
+    // we want to insert context between the event and the path
+    if (event.includes(':') && context) {
+        const parts = event.split(':');
+        ctx = `${parts[0]}:${context}.${parts[1]}`;
+    }
+
+    return ctx;
+}
+
+/**
+ * getContext return data path to current target.
  *
  * @param  {[type]} context [description]
  * @param  {[type]} prop    [description]
  * @return {[type]}         [description]
  */
 function getContext(context, prop) {
-    return context ? context + '.' + prop : prop;
+    const key = Array.isArray(prop) ? prop.join('.') : prop;
+    return context ? context + '.' + key : key;
 }
 
-export default Model;
+/**
+ * Export model factory
+ *
+ * @param  {mixed} data [description]
+ * @return {Model}      [description]
+ */
+export default function(data) {
+    return (new Model(data)).data;
+}

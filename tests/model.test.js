@@ -1,12 +1,12 @@
 /* global expect, test, describe, beforeEach */
-import Model from '../src/model.js';
+import newModel from '../src/model.js';
 
 /**
  * Setup test model
  * @return {[type]} [description]
  */
-function makeTestModel() {
-    return new Model(
+function makeTestnewModel() {
+    return newModel(
         {
             'stuff': {
                 'northwind': 'costa',
@@ -20,16 +20,16 @@ function makeTestModel() {
 }
 
 describe('Test basic get functionalty', () => {
-    const testModel = makeTestModel();
+    const testModel = makeTestnewModel();
 
     test('data object exists', () => {
-        expect(typeof testModel.data).toBe('object');
+        expect(typeof testModel).toBe('object');
     });
     test('data object is populated', () => {
-        expect(testModel.data.name).toBe('dave');
+        expect(testModel.name).toBe('dave');
     });
     test('data object array is populated', () => {
-        expect(testModel.data.stuff.info[1]).toBe(2);
+        expect(testModel.stuff.info[1]).toBe(2);
     });
     test('Get root data', () => {
         expect(testModel.get().name).toBe('dave');
@@ -57,7 +57,7 @@ describe('Test basic get functionalty', () => {
         expect(testModel.get('stuff.info.6', 'hello')).toBe('hello');
     });
     test('Get allows access to values with protected names', () => {
-        testModel.data.get = 'test';
+        testModel.get = 'test';
         expect(testModel.get('get')).toBe('test');
     });
     test('Get something that doesnt exist', () => {
@@ -66,17 +66,17 @@ describe('Test basic get functionalty', () => {
 });
 
 describe('Test basic set functionalty', () => {
-    const testModel = makeTestModel();
+    const testModel = makeTestnewModel();
 
     test('Basic set', () => {
         testModel.set('name', 'bert');
         expect(testModel.get('name')).toBe('bert');
-        expect(testModel.data.name).toBe('bert');
+        expect(testModel.name).toBe('bert');
     });
 
     test('Nested set', () => {
         testModel.set('stuff.northwind', 'example');
-        expect(testModel.data.stuff.northwind).toBe('example');
+        expect(testModel.stuff.northwind).toBe('example');
         expect(testModel.get('stuff.northwind')).toBe('example');
     });
 
@@ -87,26 +87,26 @@ describe('Test basic set functionalty', () => {
 
     test('Set arrays', () => {
         testModel.set('new.object.arr', [1]);
-        expect(testModel.data.new.object.arr[0]).toBe(1);
+        expect(testModel.new.object.arr[0]).toBe(1);
         expect(testModel.get('new.object.arr[0]')).toBe(1);
     });
 
     test('Set numerical property', () => {
         testModel.set('new.object.arr2.0', 'hi');
-        expect(testModel.data.new.object.arr2[0]).toBe('hi');
+        expect(testModel.new.object.arr2[0]).toBe('hi');
         expect(testModel.get('new.object.arr2.0')).toBe('hi');
     });
 
     test('Set numerical property with array syntax', () => {
         testModel.set('new.object.arr3[0]', 'hey');
-        expect(testModel.data.new.object.arr3[0]).toBe('hey');
+        expect(testModel.new.object.arr3[0]).toBe('hey');
         expect(testModel.get('new.object.arr3.0')).toBe('hey');
     });
 
     test('Set as array of attrs', () => {
         testModel.set(['new', 'object', 'arr2', '0'], 'yo');
 
-        expect(testModel.data.new.object.arr2[0]).toBe('yo');
+        expect(testModel.new.object.arr2[0]).toBe('yo');
         expect(testModel.get(['new', 'object', 'arr2', '0'])).toBe('yo');
     });
 });
@@ -115,7 +115,7 @@ describe('Test read events', () => {
     let testModel;
 
     beforeEach(() => {
-        testModel = makeTestModel();
+        testModel = makeTestnewModel();
     });
 
     test('Read via get', () => {
@@ -128,12 +128,13 @@ describe('Test read events', () => {
         testModel.on('read', (data) => {
             expect(data).toBe('name');
         });
-        testModel.data.name;
+        testModel.name;
     });
+
     // Deep data read will travel up the chain of values till the relevent one.
     // This means a read listener on stuff will trigger as well as the one on stuff.info
     test('Read deep data', () => {
-        const calls = ['stuff.info', 'stuff'];
+        const calls = ['stuff', 'stuff.info'];
         testModel.on('read', (data) => {
             expect(data).toBe(calls.pop());
         });
@@ -150,14 +151,14 @@ describe('Test read events', () => {
 
         testModel.on('read', f1);
         testModel.on('read', f2);
-        expect(testModel._events['read'].length).toBe(2);
+        expect(testModel.getEvents('read').length).toBe(2);
 
         testModel.off('read', f1);
-        expect(testModel._events['read'].length).toBe(1);
+        expect(testModel.getEvents('read').length).toBe(1);
 
         testModel.off('read');
         // Should remove all read listerns
-        expect(!testModel._events['read']).toBe(true);
+        expect(!testModel.getEvents('read')).toBe(true);
     });
 });
 
@@ -165,11 +166,11 @@ describe('Simple change detection', () => {
     let testModel;
 
     beforeEach(() => {
-        testModel = makeTestModel();
+        testModel = makeTestnewModel();
     });
 
     test('Listen to value created by set', () => {
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe('CREATE');
             expect(namespace).toBe('count');
             expect(updated).toBe(0);
@@ -179,17 +180,17 @@ describe('Simple change detection', () => {
     });
 
     test('Listen to value created directly', () => {
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe('CREATE');
             expect(namespace).toBe('count');
             expect(updated).toBe(0);
         });
 
-        testModel.data.count = 0;
+        testModel.count = 0;
     });
 
     test('Listen to value update', () => {
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe('UPDATE');
             expect(namespace).toBe('name');
             expect(updated).toBe('Gertrude');
@@ -200,7 +201,7 @@ describe('Simple change detection', () => {
     });
 
     test('Listen to value unchanged', () => {
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe('NONE');
             expect(namespace).toBe('name');
             expect(updated).toBe('dave');
@@ -211,7 +212,7 @@ describe('Simple change detection', () => {
     });
 
     test('Listen to value change numeric', () => {
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe('UPDATE');
             expect(namespace).toBe('name');
             expect(updated).toBe(0);
@@ -222,7 +223,7 @@ describe('Simple change detection', () => {
     });
 
     test('Listen to value change false', () => {
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe('UPDATE');
             expect(namespace).toBe('name');
             expect(updated).toBe(false);
@@ -233,7 +234,7 @@ describe('Simple change detection', () => {
     });
 
     test('Listen to value change null', () => {
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe('UPDATE');
             expect(namespace).toBe('name');
             expect(updated).toBe(null);
@@ -244,21 +245,26 @@ describe('Simple change detection', () => {
     });
 
     test('Listen to value remove', () => {
-        testModel.on('change', (type, namespace, updated, original) => {
-            console.log(type, namespace, updated, original);
-            expect(type).toBe('DELETE');
+        let count = 0;
+
+        testModel.on('all', (type, namespace, updated, original) => {
+            count++;
+            expect(type).toBe('REMOVE');
             expect(namespace).toBe('name');
-            expect(updated).toBe(false);
+            expect(updated).toBe(undefined);
             expect(original).toBe('dave');
         });
 
-        delete testModel.data.name;
+        delete testModel.name;
+        expect(testModel.name).toBe(undefined);
+
+        expect(count).toBe(1);
     });
 
     test('Listen to object update', () => {
         const namespaces = ['stuff.northwind', 'stuff'];
         const changes = ['UPDATE', 'UPDATE'];
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe(changes.shift());
             expect(namespace).toBe(namespaces.shift());
         });
@@ -270,7 +276,7 @@ describe('Simple change detection', () => {
         const namespaces = ['stuff.cheese', 'stuff'];
         const changes = ['CREATE', 'UPDATE'];
 
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe(changes.shift());
             expect(namespace).toBe(namespaces.shift());
         });
@@ -289,7 +295,7 @@ describe('Simple change detection', () => {
         const namespaces = ['testing.platypus', 'testing.animal', 'testing.cake', 'testing'];
         const changes = ['CREATE', 'REMOVE', 'REMOVE', 'UPDATE'];
 
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe(changes.shift());
             expect(namespace).toBe(namespaces.shift());
         });
@@ -305,7 +311,7 @@ describe('Simple change detection', () => {
         const namespaces = ['testing.animal', 'testing.cake', 'testing'];
         const changes = ['NONE', 'NONE', 'NONE'];
 
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe(changes.shift());
             expect(namespace).toBe(namespaces.shift());
         });
@@ -321,7 +327,7 @@ describe('Simple change detection', () => {
         const namespaces = ['testing.animal', 'testing.cake', 'testing'];
         const changes = ['NONE', 'UPDATE', 'UPDATE'];
 
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe(changes.shift());
             expect(namespace).toBe(namespaces.shift());
         });
@@ -335,7 +341,7 @@ describe('Simple change detection', () => {
         const namespaces = ['testing.animal', 'testing.cake', 'testing'];
         const changes = ['REMOVE', 'REMOVE', 'UPDATE'];
 
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe(changes.shift());
             expect(namespace).toBe(namespaces.shift());
         });
@@ -349,7 +355,7 @@ describe('Simple change detection', () => {
         const namespaces = ['a.b.c.d.e.f', 'a.b.c.d.e', 'a.b.c.d', 'a.b.c', 'a.b', 'a'];
         const changes = ['CREATE', 'CREATE', 'CREATE', 'CREATE', 'CREATE', 'CREATE'];
 
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             callbackCount++;
             expect(type).toBe(changes.shift());
             expect(namespace).toBe(namespaces.shift());
@@ -368,7 +374,7 @@ describe('Simple change detection', () => {
         const namespaces = ['a.b.c.d.e.f', 'a.b.c.d.e', 'a.b.c.d', 'a.b.c', 'a.b', 'a'];
         const changes = ['REMOVE', 'REMOVE', 'REMOVE', 'REMOVE', 'REMOVE', 'UPDATE'];
 
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe(changes.shift());
             expect(namespace).toBe(namespaces.shift());
         });
@@ -394,7 +400,7 @@ describe('Simple change detection', () => {
     test('Test simple array match', () => {
         testModel.set('abc', ['bob']);
 
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe('NONE');
         });
 
@@ -404,7 +410,7 @@ describe('Simple change detection', () => {
     test('Test simple object match', () => {
         testModel.set('abc', {name: 'bob'});
 
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe('NONE');
         });
 
@@ -414,7 +420,7 @@ describe('Simple change detection', () => {
     test('Empty object match', () => {
         testModel.set('abc', []);
 
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe('NONE');
         });
 
@@ -424,7 +430,7 @@ describe('Simple change detection', () => {
     test('Empty array match', () => {
         testModel.set('abc', []);
 
-        testModel.on('change', (type, namespace, updated, original) => {
+        testModel.on('all', (type, namespace, updated, original) => {
             expect(type).toBe('NONE');
         });
 
@@ -436,28 +442,28 @@ describe('Context events', () => {
     let testModel;
 
     beforeEach(() => {
-        testModel = makeTestModel();
+        testModel = makeTestnewModel();
     });
 
     test('Context event simple', () => {
         const stuff = testModel.get('stuff');
 
-        stuff.on('change', () => {});
-        expect(Object.keys(testModel._events)[0]).toBe('change:stuff');
+        stuff.on('all', () => {});
+        expect(Object.keys(testModel.getEvents())[0]).toBe('all:stuff');
     });
 
     test('Context event, sub object', () => {
         const stuff = testModel.get('stuff');
 
         stuff.on('change:name', () => {});
-        expect(Object.keys(testModel._events)[0]).toBe('change:stuff.name');
+        expect(Object.keys(testModel.getEvents())[0]).toBe('change:stuff.name');
     });
 
 
     test('Add event listener directly to sub object', () => {
         const stuff = testModel.get('stuff');
 
-        stuff.on('change', (type, updated, original) => {
+        stuff.on('all', (type, updated, original) => {
             expect(type).toBe('UPDATE');
         });
 
@@ -475,7 +481,7 @@ describe('Context events', () => {
         testModel.set('test.testing', {'name': 'bobbert'});
         const testing = testModel.get('test.testing');
 
-        testing.on('change', (type, updated, original) => {
+        testing.on('all', (type, updated, original) => {
             expect(type).toBe('REMOVE');
         });
 
@@ -486,7 +492,7 @@ describe('Context events', () => {
         testModel.set('test.testing', {'name': 'bobbert'});
         const testing = testModel.get('test.testing');
 
-        testing.on('change', (type, updated, original) => {
+        testing.on('all', (type, updated, original) => {
             expect(type).toBe('UPDATE');
             expect(updated.name).toBe('Jane');
             expect(original.name).toBe('bobbert');
@@ -571,7 +577,7 @@ describe('Listeners', () => {
     let testModel;
 
     beforeEach(() => {
-        testModel = makeTestModel();
+        testModel = makeTestnewModel();
     });
 
     test('Add listener', () => {
@@ -581,7 +587,7 @@ describe('Listeners', () => {
             'update:*',
             'change:name',
             'change:*',
-            'change',
+            'all',
             'updated',
         ];
         const listener = {
@@ -604,7 +610,7 @@ describe('Listeners', () => {
             'potato:update:*',
             'potato:change:name',
             'potato:change:*',
-            'potato:change',
+            'potato:all',
             'potato:updated',
         ];
         const listener = {
@@ -632,8 +638,8 @@ describe('Listeners', () => {
             'test:change:name',
             'change:*',
             'test:change:*',
-            'change',
-            'test:change',
+            'all',
+            'test:all',
             'updated',
             'test:updated',
             // none namespaced sub removed
@@ -641,10 +647,9 @@ describe('Listeners', () => {
             'test:update:*',
             'test:change:name',
             'test:change:*',
-            'test:change',
+            'test:all',
             'test:updated',
         ];
-
 
         const listener = {
             trigger(evt) {
@@ -677,10 +682,10 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = new Model(obj);
+        const test = newModel(obj);
 
-        expect(JSON.stringify(test.data)).toBe(JSON.stringify(obj));
-        expect(JSON.stringify(test.data.test)).toBe('[1,2]');
+        expect(JSON.stringify(test)).toBe(JSON.stringify(obj));
+        expect(JSON.stringify(test.test)).toBe('[1,2]');
     });
 
     test('Object keys', () => {
@@ -688,10 +693,10 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = new Model(obj);
+        const test = newModel(obj);
 
-        expect(Object.keys(test.data)[0]).toBe('hello');
-        expect(Object.keys(test.data)[1]).toBe('test');
+        expect(Object.keys(test)[0]).toBe('hello');
+        expect(Object.keys(test)[1]).toBe('test');
     });
 
     test('Object values', () => {
@@ -699,9 +704,9 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = new Model(obj);
+        const test = newModel(obj);
 
-        expect(Object.values(test.data)[0]).toBe('world');
+        expect(Object.values(test)[0]).toBe('world');
     });
 
     test('Object enteries', () => {
@@ -709,8 +714,8 @@ describe('Native functionalty', () => {
             'hello': 'world',
             'test': [1, 2],
         };
-        const test = new Model(obj);
-        const result = Object.entries(test.data)[0];
+        const test = newModel(obj);
+        const result = Object.entries(test)[0];
 
         expect(result[0]).toBe('hello');
         expect(result[1]).toBe('world');
@@ -718,21 +723,32 @@ describe('Native functionalty', () => {
 
     test('Array map', () => {
         let count = 0; let val = 1;
-        const test = new Model({
+        const test = newModel({
             'test': [1, 2, 3],
         });
 
-        test.data.test.map((v)=> {
+        test.test.map((v)=> {
             count++;
             expect(v).toBe(val++);
         });
         expect(count).toBe(3);
     });
+
+    test('Spread', () => {
+        const test = newModel({
+            'test': [1, 2, 3],
+        });
+
+        const flat = [...test.test];
+        expect(flat[0]).toBe(1);
+        expect(flat[1]).toBe(2);
+        expect(flat[2]).toBe(3);
+    });
 });
 
 describe('Custom events', () => {
     test('Trigger custom event', () => {
-        const testModel = makeTestModel();
+        const testModel = makeTestnewModel();
         let called = 0;
         testModel.on('magic:helloworld', (d) => {
             expect(d.id).toBe(123);
@@ -745,7 +761,7 @@ describe('Custom events', () => {
     });
 
     test('Trigger custom event via defer', () => {
-        const testModel = makeTestModel();
+        const testModel = makeTestnewModel();
         const stuff = testModel.get('stuff');
 
         let called = 0;
@@ -757,5 +773,46 @@ describe('Custom events', () => {
         stuff.trigger('magic', {id: 123});
 
         expect(called).toBe(1);
+    });
+});
+
+describe('Functions', () => {
+    test('Can store functions', () => {
+        const model = newModel({'name': 'bob'});
+
+        model.set('abc', function() {
+            return 'yarr';
+        });
+        model.set('echo', function(v) {
+            return v;
+        });
+
+        expect(model.get('abc')()).toBe('yarr');
+        expect(model.get('echo')('test')).toBe('test');
+        expect(model.abc()).toBe('yarr');
+        expect(model.echo('test')).toBe('test');
+    });
+
+    test('Can change function', () => {
+        const model = newModel({'name': 'bob'});
+        const method = function(v) {
+            return v;
+        };
+
+        const types = [
+            'CREATE',
+            // No event on no change.
+            'UPDATE',
+        ];
+
+        model.on('change:echo', (type, n, o) => {
+            expect(type).toBe(types.shift());
+        });
+
+        model.set('echo', method);
+        model.set('echo', method);
+        model.set('echo', function(v) {
+            return v;
+        });
     });
 });

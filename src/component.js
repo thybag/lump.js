@@ -1,5 +1,5 @@
 import makeTemplate from './template.js';
-import Model from './model.js';
+import makeModel from './model.js';
 
 // Use whitelist to determine if events exist.
 // In many cases only the "target" will have these & we will be catching the bubbled version.
@@ -51,8 +51,7 @@ const Component = function() {
         // Init data
         if (this.data) {
             // Connect model
-            this._model = new Model(this.data);
-            this.data = this._model.data;
+            this.data = makeModel(this.data);
         }
 
         /* eslint-disable prefer-rest-params */
@@ -156,8 +155,8 @@ const Component = function() {
         this._events = [];
 
         // Add listener to own model
-        if (this._model) {
-            this._model.subscribe(this, 'data');
+        if (this.data) {
+            this.data.subscribe(this, 'data');
             this.on('data:updated', 'render');
         }
 
@@ -179,7 +178,7 @@ const Component = function() {
         }
 
         // Remove listener from own model
-        if (this._model) this._model.unsubscribe(this, 'data');
+        if (this.data) this.data.unsubscribe(this, 'data');
     };
 
     /**
