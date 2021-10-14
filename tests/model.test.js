@@ -816,3 +816,48 @@ describe('Functions', () => {
         });
     });
 });
+
+describe('Array model methods', () => {
+    test('array model methods', () => {
+        const model1 = newModel(['hello']);
+        expect(model1.getContext()).toBe('');
+
+        const model2 = newModel({'data':['hello']});
+        expect(model2.data.getContext()).toBe('data'); 
+    });
+});
+
+describe('Models in Models', () => {
+    test('model in model convert to clean data', () => {
+        // Cannot add model inside model (transformed to real data)
+        const friend = newModel({'name': 'jimmy'});
+        const model = newModel({'name': 'bob', 'friend': friend});
+
+        // Cannot add parts of model inside mode, convert to real data
+        expect(model.friend.name).toBe('jimmy');
+    });
+
+    test('Models convert to objects on copy, avoiding circular reference creation', () => {
+        // Cannot add model inside model (transformed to real data)
+        const friend = newModel({'name': 'jimmy'});
+        const model = newModel({'name': 'bob', 'friend': friend});
+
+        friend.friend = model;
+
+        // Cannot add parts of model inside mode, convert to real data
+        expect(model.friend.name).toBe('jimmy');
+        expect(model.friend.friend).toBe(undefined);
+        expect(friend.friend.name).toBe('bob');
+    });
+
+    test('Throw error if model created on an object containing circular references', () => {
+        // assert error?
+        let test = {'next': null};
+        test.next = test;
+
+        expect(function(){
+            newModel(test);
+        }).toThrow('Lump Model cannot contain circular references.');
+        
+    });
+});

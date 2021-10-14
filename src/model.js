@@ -8,9 +8,12 @@ const jsPathRegex = /([^[.\]])+/g;
 const Model = function(_data) {
     const parent = this;
 
+    // clone the data to keep it safe/clean
+    _data = this.copy(_data);
+
     // Cache data access/edit
     const _cache = new WeakMap();
-    const _original = JSON.parse(JSON.stringify(_data));
+    const _original = this.copy(_data);
 
     // Live data proxy
     const _real = newDataProxy(_data, '');
@@ -54,6 +57,11 @@ const Model = function(_data) {
         // Setup vars
         let base = _real;
         let insert; let insertLocation;
+
+        // Ensure its a clean copy
+        if (parent.isObject(value)) {
+            value = parent.copy(value);
+        }
 
         // Iterate object
         for (let i = 0; i < keyArray.length; i++ ) {
@@ -339,9 +347,25 @@ Model.prototype.unsubscribe = function(subscriber, namespace = '') {
     return this;
 };
 
-// Util to clone object
-Model.prototype.copy = function(data) {
-    return (typeof data == 'object') ? JSON.parse(JSON.stringify(data)) : data;
+// Util to deep clone simple object
+Model.prototype.copy = function(data, objectMap = new WeakMap()) {
+    if (!this.isObject(data)) return data;
+    
+    // Detect circular reference in data.
+    if (objectMap.has(data)) {
+        throw new Error("Lump Model cannot contain circular references.");
+    }
+    objectMap.set(data, true);
+
+    // Good to go. get cloneing.
+    const tmp = Array.isArray(data) ? [] : {};
+    for (let key in data) {
+        if (data.hasOwnProperty(key)) {
+            tmp[key] = this.copy(data[key], objectMap);
+        }
+    }
+
+    return tmp;
 };
 
 // Detect change type for a primative
@@ -372,6 +396,7 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
     original = original ? original[next] : undefined;
     updated = updated ? updated[next] : undefined;
 
+
     // Target key not yet reached, dig on to the next key
     if (keys.length != 0) {
         returnType = this.detectChanges(this.copy(keys), original, updated, namespace);
@@ -384,6 +409,7 @@ Model.prototype.detectChanges = function(keys, original, updated, namespace = ''
         // Detect attribute changes to children
         // ie. if you remove an object, its children need to fire remove events
         if (this.isObject(updated) || this.isObject(original)) {
+
             // Check for field changes
             const fields = new Set([
                 ...(this.isObject(updated)) ? Object.keys(updated) : [],
